@@ -1,0 +1,2307 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<meta charset="utf-8">
+
+<title>
+Ronald Explorer
+</title>
+
+
+<style>
+
+
+body {
+
+	margin:0;
+
+	overflow:hidden;
+
+	background:#000;
+
+}
+
+
+
+#panel {
+
+	position:absolute;
+
+	top:20px;
+
+	left:20px;
+
+	color:white;
+
+	font-family:monospace;
+
+	font-size:18px;
+
+	z-index:10;
+
+}
+
+
+
+#settingsButton {
+
+	position:absolute;
+
+	top:20px;
+
+	right:20px;
+
+	font-size:24px;
+
+	z-index:20;
+
+}
+
+
+
+#settingsPanel {
+
+	position:absolute;
+
+	top:60px;
+
+	right:20px;
+
+	width:260px;
+
+	padding:20px;
+
+	background:
+	rgba(0,0,0,0.75);
+
+	color:white;
+
+	border:1px solid white;
+
+	font-family:monospace;
+
+	font-size:16px;
+
+	display:none;
+
+	z-index:30;
+
+}
+
+
+
+input {
+
+	font-family:monospace;
+
+	font-size:18px;
+
+}
+
+
+
+button {
+
+	font-family:monospace;
+
+	font-size:18px;
+
+}
+
+
+
+.info {
+
+	margin-top:10px;
+
+}
+
+
+
+</style>
+
+
+
+
+
+<script type="importmap">
+
+{
+
+"imports":{
+
+
+"three":
+
+"https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js",
+
+
+"three/addons/":
+
+"https://cdn.jsdelivr.net/npm/three@0.160/examples/jsm/"
+
+
+}
+
+}
+
+</script>
+
+
+</head>
+
+
+
+<body>
+
+
+
+<div id="panel">
+
+
+<b>
+Ronald Explorer
+</b>
+
+
+<br><br>
+
+
+<div id="hoverInfo">
+
+Hover: none
+
+</div>
+
+
+<br>
+
+
+Enter Ronald variant:
+
+<br>
+
+
+<input
+
+id="nameInput"
+
+value="RONALD"
+
+maxlength="6"
+
+>
+
+
+<button id="generate">
+
+Generate
+
+</button>
+
+
+
+<button id="newRonald">
+
+New Ronald
+
+</button>
+
+
+
+<div id="generateInfo" class="info">
+
+Vector: none
+
+</div>
+
+
+</div>
+
+
+
+
+
+<button id="settingsButton">
+
+⚙
+
+</button>
+
+
+
+
+
+
+<div id="settingsPanel">
+
+
+<h3>
+Settings
+</h3>
+
+
+Background:
+
+<br>
+
+
+<label>
+
+<input
+
+type="radio"
+
+name="background"
+
+id="blackBG"
+
+checked
+
+>
+
+Black
+
+</label>
+
+
+
+<label>
+
+<input
+
+type="radio"
+
+name="background"
+
+id="whiteBG"
+
+>
+
+White
+
+</label>
+
+
+
+<br><br>
+
+
+
+Line thickness
+
+<br>
+
+
+<input
+
+type="range"
+
+id="lineThickness"
+
+min="0.005"
+
+max="0.08"
+
+step="0.005"
+
+value="0.03"
+
+>
+
+
+
+<br><br>
+
+
+
+<label>
+
+<input
+
+type="checkbox"
+
+id="separatePaths"
+
+checked
+
+>
+
+Separate paths
+
+</label>
+
+
+
+<br>
+
+
+
+<label>
+
+<input
+
+type="checkbox"
+
+id="boundingBox"
+
+checked
+
+>
+
+Show bounding tetrahedron
+
+</label>
+
+
+
+<br><br>
+
+
+
+<button id="closeSettings">
+
+Close
+
+</button>
+
+
+</div>
+
+
+
+
+
+
+
+<script type="module">
+
+
+import * as THREE from "three";
+
+
+import {
+
+OrbitControls
+
+}
+
+from
+
+"three/addons/controls/OrbitControls.js";
+
+
+
+import {
+
+Line2
+
+}
+
+from
+
+"three/addons/lines/Line2.js";
+
+
+
+import {
+
+LineGeometry
+
+}
+
+from
+
+"three/addons/lines/LineGeometry.js";
+
+
+
+import {
+
+LineMaterial
+
+}
+
+from
+
+"three/addons/lines/LineMaterial.js";
+
+
+
+
+
+
+
+// =================================
+// VECTOR SPACE
+// =================================
+
+
+const vectors = {
+
+
+R:
+new THREE.Vector3(
+1,
+1,
+1
+),
+
+
+N:
+new THREE.Vector3(
+-1,
+-1,
+1
+),
+
+
+L:
+new THREE.Vector3(
+-1,
+1,
+-1
+),
+
+
+D:
+new THREE.Vector3(
+1,
+-1,
+-1
+)
+
+};
+
+
+
+
+
+const consonants =
+[
+"R",
+"N",
+"L",
+"D"
+];
+
+
+
+
+
+const colours =
+{
+
+
+R:
+[1,0.2,0.2],
+
+
+N:
+[0.2,1,0.2],
+
+
+L:
+[0.2,0.5,1],
+
+
+D:
+[1,1,0.2]
+
+};
+
+
+
+
+
+
+
+
+
+// =================================
+// THREE INITIALISATION
+// =================================
+
+
+
+const scene =
+new THREE.Scene();
+
+
+
+scene.background =
+new THREE.Color(
+0x000000
+);
+
+
+
+
+const camera =
+new THREE.PerspectiveCamera(
+
+45,
+
+window.innerWidth /
+window.innerHeight,
+
+0.1,
+
+100
+
+);
+
+
+
+camera.position.set(
+
+10,
+
+10,
+
+10
+
+);
+
+
+
+
+
+const renderer =
+new THREE.WebGLRenderer(
+
+{
+antialias:true
+}
+
+);
+
+
+
+renderer.setSize(
+
+window.innerWidth,
+
+window.innerHeight
+
+);
+
+
+
+document.body.appendChild(
+
+renderer.domElement
+
+);
+
+
+
+
+
+const controls =
+new OrbitControls(
+
+camera,
+
+renderer.domElement
+
+);
+
+
+
+controls.enableDamping=true;
+
+
+
+controls.target.set(
+
+0,
+
+0,
+
+0
+
+);
+
+
+
+controls.update();
+
+
+
+
+
+
+
+
+// =================================
+// TETRAHEDRON BOUNDARY
+// =================================
+
+
+
+const boundingMesh =
+new THREE.Mesh(
+
+
+new THREE.TetrahedronGeometry(
+
+2
+
+),
+
+
+
+new THREE.MeshBasicMaterial(
+
+{
+
+color:0xffffff,
+
+wireframe:true,
+
+transparent:true,
+
+opacity:0.25
+
+}
+
+)
+
+);
+
+
+
+scene.add(
+boundingMesh
+);
+
+
+
+
+
+
+
+
+// =================================
+// LABELS
+// =================================
+
+
+function createLabel(
+text,
+position
+)
+{
+
+
+const canvas =
+document.createElement(
+"canvas"
+);
+
+
+
+canvas.width=256;
+
+canvas.height=128;
+
+
+
+const ctx =
+canvas.getContext(
+"2d"
+);
+
+
+
+ctx.fillStyle="white";
+
+ctx.font="70px monospace";
+
+ctx.fillText(
+
+text,
+
+20,
+
+80
+
+);
+
+
+
+const sprite =
+new THREE.Sprite(
+
+new THREE.SpriteMaterial(
+
+{
+
+map:
+new THREE.CanvasTexture(
+canvas
+)
+
+}
+
+)
+
+);
+
+
+
+sprite.position.copy(
+position
+);
+
+
+
+sprite.scale.set(
+
+0.6,
+
+0.3,
+
+1
+
+);
+
+
+
+scene.add(
+sprite
+);
+
+
+}
+
+
+
+
+
+
+for(
+const [letter,vector]
+of Object.entries(vectors)
+)
+{
+
+
+createLabel(
+
+letter,
+
+vector.clone()
+.multiplyScalar(
+2.5
+)
+
+);
+
+
+}
+
+
+
+
+
+// =================================
+// PART 2 CONTINUES
+// =================================
+// =================================
+// RONALD MATRIX GENERATION
+// =================================
+
+
+const visiblePositions=[];
+
+const visibleColours=[];
+
+
+const pathNames=[];
+
+
+// node positions for picking
+const nodePositions=[];
+
+const nodeNames=[];
+
+
+
+const separatePaths =
+{
+	value:true
+};
+
+
+
+
+
+
+
+function offsetFor(code)
+{
+
+
+if(!separatePaths.value)
+{
+
+return new THREE.Vector3(
+0,
+0,
+0
+);
+
+}
+
+
+
+const n =
+parseInt(
+
+code
+.replaceAll("R","0")
+.replaceAll("N","1")
+.replaceAll("L","2")
+.replaceAll("D","3"),
+
+4
+
+);
+
+
+
+return new THREE.Vector3(
+
+Math.sin(n*12.9898)*0.025,
+
+Math.cos(n*78.233)*0.025,
+
+Math.sin(n*37.719)*0.025
+
+);
+
+
+}
+
+
+
+
+
+
+
+function addVariant(code)
+{
+
+
+let current =
+new THREE.Vector3();
+
+
+const offset =
+offsetFor(code);
+
+
+
+const nodes =
+[
+current.clone()
+.add(offset)
+];
+
+
+
+for(
+const c of code
+)
+{
+
+current =
+current.clone()
+.add(
+vectors[c]
+);
+
+
+nodes.push(
+current.clone()
+.add(offset)
+);
+
+
+
+}
+
+
+
+pathNames.push(
+code
+);
+
+
+
+
+
+// store nodes for interior selection
+
+
+for(
+let i=0;i<nodes.length;i++
+)
+{
+
+
+nodePositions.push(
+nodes[i]
+);
+
+
+nodeNames.push(
+code
+);
+
+
+}
+
+
+
+
+// add visible segments
+
+
+for(
+let i=0;i<4;i++
+)
+{
+
+
+const start =
+nodes[i];
+
+
+const end =
+nodes[i+1];
+
+
+
+visiblePositions.push(
+
+start.x,start.y,start.z,
+
+end.x,end.y,end.z
+
+);
+
+
+
+const col =
+colours[
+code[i]
+];
+
+
+
+visibleColours.push(
+
+...col,
+
+...col
+
+);
+
+
+
+}
+
+
+
+}
+
+
+
+
+
+
+
+function generateVariants(prefix="")
+{
+
+
+if(
+prefix.length===4
+)
+{
+
+addVariant(prefix);
+
+return;
+
+}
+
+
+
+for(
+const c of consonants
+)
+{
+
+generateVariants(
+prefix+c
+);
+
+}
+
+
+}
+
+
+
+generateVariants();
+
+
+
+
+
+
+
+
+// =================================
+// MATRIX BUFFER
+// =================================
+
+
+const matrixGeometry =
+new THREE.BufferGeometry();
+
+
+
+matrixGeometry.setAttribute(
+
+"position",
+
+new THREE.Float32BufferAttribute(
+
+visiblePositions,
+
+3
+
+)
+
+);
+
+
+
+matrixGeometry.setAttribute(
+
+"color",
+
+new THREE.Float32BufferAttribute(
+
+visibleColours,
+
+3
+
+)
+
+);
+
+
+
+
+
+
+const matrixLines =
+new THREE.LineSegments(
+
+matrixGeometry,
+
+new THREE.LineBasicMaterial(
+
+{
+
+vertexColors:true,
+
+transparent:true,
+
+opacity:0.35
+
+}
+
+)
+
+);
+
+
+
+scene.add(
+matrixLines
+);
+
+
+
+
+
+
+
+
+// =================================
+// INTERIOR PICKING NODES
+// =================================
+
+
+
+const pickGeometry =
+new THREE.BufferGeometry();
+
+
+
+pickGeometry.setFromPoints(
+nodePositions
+);
+
+
+
+const pickMaterial =
+new THREE.PointsMaterial(
+
+{
+
+size:0.12,
+
+transparent:true,
+
+opacity:0
+
+}
+
+);
+
+
+
+const pickNodes =
+new THREE.Points(
+
+pickGeometry,
+
+pickMaterial
+
+);
+
+
+
+scene.add(
+pickNodes
+);
+
+
+
+
+
+
+
+// =================================
+// HIGHLIGHTING
+// =================================
+
+
+
+let selectedHighlight=null;
+
+
+let hoverHighlight=null;
+
+
+let currentHoverCode=null;
+
+
+
+
+
+
+
+function createHighlight(
+points,
+colour=0xffffff
+)
+{
+
+
+const geometry =
+new THREE.BufferGeometry()
+.setFromPoints(
+points
+);
+
+
+
+return new THREE.Line(
+
+geometry,
+
+new THREE.LineBasicMaterial(
+
+{
+
+color:colour,
+
+linewidth:1
+
+}
+
+)
+
+);
+
+
+}
+
+
+
+
+
+
+
+
+function highlightRonald(code)
+{
+
+
+if(
+selectedHighlight
+)
+{
+
+scene.remove(
+selectedHighlight
+);
+
+}
+
+
+
+const index =
+pathNames.indexOf(
+code
+);
+
+
+
+if(
+index<0
+)
+return;
+
+
+
+
+
+let current =
+new THREE.Vector3();
+
+
+
+const points =
+[
+current.clone()
+];
+
+
+
+for(
+const c of code
+)
+{
+
+
+current =
+current.clone()
+.add(
+vectors[c]
+);
+
+
+
+points.push(
+current
+);
+
+
+
+}
+
+
+
+
+selectedHighlight =
+createHighlight(
+points,
+0xffffff,
+0.12
+);
+
+
+
+scene.add(
+selectedHighlight
+);
+
+
+}
+
+
+
+
+
+
+
+
+
+// =================================
+// RAYCASTING
+// =================================
+
+
+const raycaster =
+new THREE.Raycaster();
+
+
+
+const mouse =
+new THREE.Vector2();
+
+
+
+raycaster.params.Points.threshold=0.25;
+
+
+
+
+
+
+
+window.addEventListener(
+"mousemove",
+event=>{
+
+
+mouse.x =
+(event.clientX /
+window.innerWidth)
+*2-1;
+
+
+
+mouse.y =
+-(event.clientY /
+window.innerHeight)
+*2+1;
+
+
+});
+
+
+
+
+
+
+
+window.addEventListener(
+"click",
+()=>{
+
+
+if(
+currentHoverCode
+)
+{
+
+highlightRonald(
+currentHoverCode
+);
+
+}
+
+
+});
+
+
+
+
+
+
+
+
+
+function updateHover()
+{
+
+
+raycaster.setFromCamera(
+
+mouse,
+
+camera
+
+);
+
+
+
+const hits =
+raycaster.intersectObject(
+pickNodes
+);
+
+
+
+if(
+hits.length
+)
+{
+
+
+const index =
+hits[0].index;
+
+
+
+currentHoverCode =
+nodeNames[index];
+
+
+
+hoverInfo.innerHTML =
+
+"Hover: <b>"
++
+currentHoverCode[0]
++
+"O"
++
+currentHoverCode[1]
++
+"A"
++
+currentHoverCode[2]
++
+currentHoverCode[3]
++
+"</b>";
+
+
+
+}
+else
+{
+
+
+currentHoverCode=null;
+
+
+hoverInfo.innerHTML =
+"Hover: none";
+
+
+}
+
+
+
+}
+
+
+
+
+
+// =================================
+// PART 3 CONTINUES
+// =================================
+// =================================
+// GENERATED RONALD VECTOR
+// =================================
+
+
+const input =
+document.getElementById(
+"nameInput"
+);
+
+
+
+const generateButton =
+document.getElementById(
+"generate"
+);
+
+
+
+const generateInfo =
+document.getElementById(
+"generateInfo"
+);
+
+
+
+const newRonaldButton =
+document.getElementById(
+"newRonald"
+);
+
+
+
+let generatedPath=null;
+
+
+
+let generatedGeometry=null;
+
+
+
+let generatedMaterial=null;
+
+
+
+
+
+
+
+function extractCode(name)
+{
+
+
+name =
+name.toUpperCase()
+.trim();
+
+
+
+if(
+name.length!==6
+)
+return null;
+
+
+
+if(
+name[1]!=="O"
+||
+name[3]!=="A"
+)
+return null;
+
+
+
+const code =
+
+name[0]
++
+name[2]
++
+name[4]
++
+name[5];
+
+
+
+for(
+const c of code
+)
+{
+
+if(
+!vectors[c]
+)
+return null;
+
+}
+
+
+
+return code;
+
+
+}
+
+
+
+
+
+
+
+
+function createGeneratedPath(code)
+{
+
+
+if(
+generatedPath
+)
+{
+
+scene.remove(
+generatedPath
+);
+
+}
+
+
+
+let current =
+new THREE.Vector3();
+
+
+
+const points =
+[
+current.clone()
+];
+
+
+
+
+
+generatedGeometry =
+new LineGeometry();
+
+
+
+generatedGeometry.setPositions(
+[
+0,0,0,
+0,0,0
+]
+);
+
+
+
+generatedMaterial =
+new LineMaterial(
+{
+
+color:0xffffff,
+
+linewidth:0.04,
+
+resolution:
+new THREE.Vector2(
+window.innerWidth,
+window.innerHeight
+)
+
+}
+
+);
+
+
+
+generatedPath =
+new Line2(
+
+generatedGeometry,
+
+generatedMaterial
+
+);
+
+
+
+scene.add(
+generatedPath
+);
+
+
+
+
+
+
+let step=0;
+
+
+
+
+
+function advance()
+{
+
+
+if(
+step>=4
+)
+{
+
+
+generateInfo.innerHTML =
+
+"Generated: <b>"
++
+code[0]
++
+"O"
++
+code[1]
++
+"A"
++
+code[2]
++
+code[3]
++
+"</b>";
+
+
+
+highlightRonald(
+code
+);
+
+
+
+return;
+
+}
+
+
+
+
+
+current =
+current.clone()
+.add(
+vectors[
+code[step]
+]
+);
+
+
+
+points.push(
+current.clone()
+);
+
+
+
+const positions=[];
+
+
+for(
+const p of points
+)
+{
+
+positions.push(
+p.x,
+p.y,
+p.z
+);
+
+}
+
+
+
+generatedGeometry.setPositions(
+positions
+);
+
+
+
+generateInfo.innerHTML =
+
+"Generating: "
++
+code
++
+"<br>Step "
++
+(step+1);
+
+
+
+step++;
+
+
+
+setTimeout(
+advance,
+500
+);
+
+
+
+}
+
+
+
+advance();
+
+
+
+}
+
+
+
+
+
+
+
+
+generateButton.onclick =
+()=>{
+
+
+const code =
+extractCode(
+input.value
+);
+
+
+
+if(
+!code
+)
+{
+
+generateInfo.innerHTML =
+"Invalid Ronald";
+
+
+return;
+
+}
+
+
+
+createGeneratedPath(
+code
+);
+
+
+};
+
+
+
+
+
+
+
+
+input.addEventListener(
+"keydown",
+e=>{
+
+
+if(
+e.key==="Enter"
+)
+generateButton.click();
+
+
+});
+
+
+
+
+
+
+
+
+
+// =================================
+// RANDOM RONALD EXPLORER
+// =================================
+
+
+
+newRonaldButton.onclick =
+()=>{
+
+
+let count=0;
+
+
+
+const interval =
+setInterval(
+()=>{
+
+
+const code =
+pathNames[
+Math.floor(
+Math.random()*pathNames.length
+)
+];
+
+
+
+highlightRonald(
+code
+);
+
+
+
+hoverInfo.innerHTML =
+
+"Exploring: <b>"
++
+code[0]
++
+"O"
++
+code[1]
++
+"A"
++
+code[2]
++
+code[3]
++
+"</b>";
+
+
+
+count++;
+
+
+
+if(
+count>20
+)
+{
+
+
+clearInterval(
+interval
+);
+
+
+
+const finalCode =
+pathNames[
+Math.floor(
+Math.random()*pathNames.length
+)
+];
+
+
+
+highlightRonald(
+finalCode
+);
+
+
+
+currentHoverCode =
+finalCode;
+
+
+
+hoverInfo.innerHTML =
+
+"Selected: <b>"
++
+finalCode[0]
++
+"O"
++
+finalCode[1]
++
+"A"
++
+finalCode[2]
++
+finalCode[3]
++
+"</b>";
+
+
+
+}
+
+
+
+},
+250
+);
+
+
+
+};
+
+
+
+
+
+
+
+
+
+// =================================
+// SETTINGS PANEL
+// =================================
+
+
+
+const settingsButton =
+document.getElementById(
+"settingsButton"
+);
+
+
+
+const settingsPanel =
+document.getElementById(
+"settingsPanel"
+);
+
+
+
+const closeSettings =
+document.getElementById(
+"closeSettings"
+);
+
+
+
+settingsButton.onclick =
+()=>{
+
+settingsPanel.style.display="block";
+
+};
+
+
+
+closeSettings.onclick =
+()=>{
+
+settingsPanel.style.display="none";
+
+};
+
+
+
+
+
+
+
+
+// background
+
+
+document.getElementById(
+"blackBG"
+)
+.onchange =
+()=>{
+
+
+scene.background =
+new THREE.Color(
+0x000000
+);
+
+
+
+settingsPanel.style.background =
+"rgba(0,0,0,0.75)";
+
+
+settingsPanel.style.color =
+"white";
+
+
+};
+
+
+
+
+
+
+
+document.getElementById(
+"whiteBG"
+)
+.onchange =
+()=>{
+
+
+scene.background =
+new THREE.Color(
+0xffffff
+);
+
+
+
+settingsPanel.style.background =
+"rgba(255,255,255,0.75)";
+
+
+settingsPanel.style.color =
+"black";
+
+
+};
+
+
+
+
+
+
+
+
+
+// line thickness
+
+
+document.getElementById(
+"lineThickness"
+)
+.oninput =
+event=>{
+
+
+const value =
+parseFloat(
+event.target.value
+);
+
+
+
+if(
+generatedMaterial
+)
+{
+
+generatedMaterial.linewidth =
+value;
+
+}
+
+
+
+};
+
+
+
+
+
+
+
+
+
+// separate paths
+
+
+document.getElementById(
+"separatePaths"
+)
+.onchange =
+event=>{
+
+
+separatePaths.value =
+event.target.checked;
+
+
+
+alert(
+"Reload page to rebuild matrix with this setting"
+);
+
+
+};
+
+
+
+
+
+
+
+
+// bounding tetrahedron
+
+
+document.getElementById(
+"boundingBox"
+)
+.onchange =
+event=>{
+
+
+boundingMesh.visible =
+event.target.checked;
+
+
+};
+
+
+
+
+// =================================
+// PART 4 CONTINUES
+// =================================
+function createHighlight(
+points,
+colour=0xffffff,
+width=0.08
+)
+{
+
+
+const positions=[];
+
+
+for(
+const p of points
+)
+{
+
+positions.push(
+p.x,
+p.y,
+p.z
+);
+
+}
+
+
+
+const geometry =
+new LineGeometry();
+
+
+
+geometry.setPositions(
+positions
+);
+
+
+
+const material =
+new LineMaterial(
+{
+
+color:colour,
+
+linewidth:width,
+
+resolution:
+new THREE.Vector2(
+window.innerWidth,
+window.innerHeight
+)
+
+}
+
+);
+
+
+
+return new Line2(
+geometry,
+material
+);
+
+
+}

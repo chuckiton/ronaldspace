@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html data-theme="light">
+<head>
+	<meta charset="UTF-8">
+	<title>Ronald Explorer</title>
+
+	<link rel="stylesheet" href="style.css?v=20260719-12">
+	<script type="importmap">
+{
+  "imports": {
+    "three":
+      "https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js",
+
+    "three/addons/":
+      "https://cdn.jsdelivr.net/npm/three@0.160/examples/jsm/"
+  }
+}
+</script>
+</head>
+
+<body>
+
+<form id="ronald-form" novalidate>
+	<div id="ronald-mode-switcher">
+		<button id="previous-entry-mode" type="button" aria-label="Previous entry mode">&lt;</button>
+		<div id="ronald-mode-label" aria-live="polite">Enter a Ronald</div>
+		<button id="next-entry-mode" type="button" aria-label="Next entry mode">&gt;</button>
+	</div>
+	<div id="ronald-entry-stage">
+		<div id="ronald-entry-mode-track">
+	<div id="ronald-entry" aria-live="polite">
+		<span id="ronald-preview"></span><span id="ronald-cursor">_</span>
+		<input
+			id="ronald-input"
+			name="ronald-name"
+			type="text"
+			value=""
+			maxlength="6"
+			autocomplete="off"
+			autocapitalize="characters"
+			spellcheck="false"
+		>
+	</div>
+	<div id="ronald-builder" aria-label="Build new Ronald" tabindex="0">
+		<div class="ronald-builder-slot" data-builder-slot="0">
+			<button class="ronald-builder-arrow" type="button" data-builder-index="0" data-builder-direction="1" aria-label="Next first letter">^</button>
+			<span class="ronald-builder-letter" data-builder-letter="0">R</span>
+			<button class="ronald-builder-arrow is-down" type="button" data-builder-index="0" data-builder-direction="-1" aria-label="Previous first letter">^</button>
+		</div>
+		<div class="ronald-builder-slot is-fixed">
+			<span class="ronald-builder-arrow-spacer" aria-hidden="true"></span>
+			<span class="ronald-builder-letter" data-builder-letter="1">O</span>
+			<span class="ronald-builder-arrow-spacer" aria-hidden="true"></span>
+		</div>
+		<div class="ronald-builder-slot" data-builder-slot="2">
+			<button class="ronald-builder-arrow" type="button" data-builder-index="2" data-builder-direction="1" aria-label="Next third letter">^</button>
+			<span class="ronald-builder-letter" data-builder-letter="2">N</span>
+			<button class="ronald-builder-arrow is-down" type="button" data-builder-index="2" data-builder-direction="-1" aria-label="Previous third letter">^</button>
+		</div>
+		<div class="ronald-builder-slot is-fixed">
+			<span class="ronald-builder-arrow-spacer" aria-hidden="true"></span>
+			<span class="ronald-builder-letter" data-builder-letter="3">A</span>
+			<span class="ronald-builder-arrow-spacer" aria-hidden="true"></span>
+		</div>
+		<div class="ronald-builder-slot" data-builder-slot="4">
+			<button class="ronald-builder-arrow" type="button" data-builder-index="4" data-builder-direction="1" aria-label="Next fifth letter">^</button>
+			<span class="ronald-builder-letter" data-builder-letter="4">L</span>
+			<button class="ronald-builder-arrow is-down" type="button" data-builder-index="4" data-builder-direction="-1" aria-label="Previous fifth letter">^</button>
+		</div>
+		<div class="ronald-builder-slot" data-builder-slot="5">
+			<button class="ronald-builder-arrow" type="button" data-builder-index="5" data-builder-direction="1" aria-label="Next sixth letter">^</button>
+			<span class="ronald-builder-letter" data-builder-letter="5">D</span>
+			<button class="ronald-builder-arrow is-down" type="button" data-builder-index="5" data-builder-direction="-1" aria-label="Previous sixth letter">^</button>
+		</div>
+	</div>
+	<div id="ronald-random" aria-live="polite">
+		<span id="ronald-random-preview">RONALD</span>
+	</div>
+		</div>
+	</div>
+	<button id="draw-ronald" type="submit" disabled>Submit ______</button>
+	<section id="ronald-history" aria-label="Ronalds discovered"></section>
+</form>
+
+<div id="ronald-count" aria-live="polite">0 Ronalds identified</div>
+<button id="unveil-all" type="button">Unveil all Ronalds</button>
+<button id="theme-toggle" type="button">Dark mode</button>
+
+<script type="module" src="src/main.js?v=20260719-12"></script>
+
+</body>
+</html>
