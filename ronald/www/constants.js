@@ -48,20 +48,6 @@ export const GORDON_VECTORS = {
     N: new THREE.Vector3(-1, -1, 1)
 };
 
-export const GERALD_VECTORS = {
-    G: new THREE.Vector3(-1, 1, -1),
-    R: new THREE.Vector3(1, 1, 1),
-    L: new THREE.Vector3(-1, -1, 1),
-    D: new THREE.Vector3(1, -1, -1)
-};
-
-// Shared by the Web Audio voices and the live waveform renderer. The four
-// name-controlled indices map to pitch, oscillator shape, harmonic count,
-// and distortion drive respectively.
-export const GERALD_FREQUENCIES = [73.42, 110, 164.81, 246.94];
-export const GERALD_HARMONIC_GAINS = [1, 0.68, 0.48, 0.34];
-export const GERALD_DISTORTION_DRIVE = [0, 18, 58, 140];
-
 export const RONALD_PATTERN = /^[RNLD]O[RNLD]A[RNLD][RNLD]$/;
 export const RONALD_TEMPLATE = ["RNLD", "O", "RNLD", "A", "RNLD", "RNLD"];
 export const RODNEY_NAME = "RODNEY";
@@ -70,8 +56,6 @@ export const MARTIN_NAME = "MARTIN";
 export const MARTIN_PATTERN = /^MARTIN$/;
 export const GORDON_NAME = "GORDON";
 export const GORDON_PATTERN = /^GORDON$/;
-export const GERALD_NAME = "GERALD";
-export const GERALD_PATTERN = /^GERALD$/;
 export const GODNEY_NAME = "GODNEY";
 
 export const THEMES = {
@@ -123,14 +107,4 @@ export const GORDON_THEME = {
     axisLabel: "#f1e6d2",
     axisLine: 0x967c68,
     node: 0x5a463a
-};
-
-export const GERALD_THEME = {
-    background: 0x1b4d8f,
-    pathOrigin: 0xf1f7ff,
-    agedPath: 0x48658f,
-    identityLightness: 0.61,
-    axisLabel: "#f4f8ff",
-    axisLine: 0x8db7ff,
-    node: 0x5f91ed
 };

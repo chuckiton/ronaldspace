@@ -3,8 +3,6 @@ import * as THREE from "three";
 import {
     END_OVERLAY_SEGMENTS,
     ENTROPY_STEP,
-    GERALD_DISTORTION_DRIVE,
-    GERALD_HARMONIC_GAINS,
     PATH_GROWTH_PER_SECOND,
     PATH_RADIAL_SEGMENTS,
     PATH_SAMPLES,
@@ -14,11 +12,8 @@ import {
     WORD_CHARACTER_PROGRESS,
     WORD_SCREEN_OFFSET,
     WORD_SCREEN_WIDTH
-} from "./constants.js?v=20260722-gerald-live-wave";
-import {
-    geraldWaveValue,
-    getUniverse
-} from "./universes.js?v=20260722-gerald-live-wave";
+} from "./constants.js?v=20260720-gordon-stage";
+import { getUniverse } from "./universes.js?v=20260720-gordon-stage";
 
 const WORD_LABEL_OPACITY = 0.94;
 const WORD_LABEL_FADE_SECONDS = 0.3;
@@ -27,131 +22,7 @@ const ACTIVE_PATH_OPACITY = 0.74;
 const INACTIVE_UNIVERSE_PATH_OPACITY = 0.075;
 const LANE_OFFSET_DISTANCE = 0.075;
 const MARTIN_ORBIT_SECONDS = 7;
-// Each fixed orbit segment ages from the moment the MARTIN passes it. The
-// lifetime is one orbit, so no residual colour survives into a second pass.
-const MARTIN_TRAIL_LIFETIME_SECONDS = MARTIN_ORBIT_SECONDS;
-const MARTIN_HEAD_LENGTH = 0.075;
-const MARTIN_COLOUR_LENGTH = 0.34;
-const MARTIN_PHASE_SLOTS = 256;
-const MARTIN_PARAMETER_INDEX = { M: 0, R: 1, T: 2, N: 3 };
-const GERALD_IDLE_ROTATION_SPEED = 0.105;
-// Keep the live waveform's rapid motion readable without changing its audio
-// recipe or temporal rate.
-const GERALD_LIVE_VISUAL_AMPLITUDE = 0.58;
-
-function distortedGeraldWave(value, distortion) {
-    const drive = GERALD_DISTORTION_DRIVE[distortion] ?? 0;
-    if (drive === 0) return value;
-    const amount = 1 + drive * 0.08;
-    return Math.tanh(value * amount) / Math.tanh(amount);
-}
-
-function liveGeraldWaveValue(crown, progress, temporalPhase) {
-    let value = 0;
-    let totalGain = 0;
-
-    for (let harmonic = 0; harmonic <= crown.harmonics; harmonic += 1) {
-        const gain = GERALD_HARMONIC_GAINS[harmonic];
-        const phase = (progress * crown.cycles + temporalPhase) * (harmonic + 1);
-        value += geraldWaveValue(crown.waveform, phase) * gain;
-        totalGain += gain;
-    }
-
-    return distortedGeraldWave(value / totalGain, crown.distortion);
-}
-
-const MARTIN_TRAIL_VERTEX_SHADER = `
-    attribute vec3 color;
-    attribute float trailOpacity;
-    varying vec3 vTrailColour;
-    varying float vTrailOpacity;
-
-    void main() {
-        vTrailColour = color;
-        vTrailOpacity = trailOpacity;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-`;
-
-const MARTIN_TRAIL_FRAGMENT_SHADER = `
-    uniform float uGlobalOpacity;
-    varying vec3 vTrailColour;
-    varying float vTrailOpacity;
-
-    void main() {
-        float opacity = vTrailOpacity * uGlobalOpacity;
-        if (opacity < 0.001) discard;
-        gl_FragColor = vec4(vTrailColour, opacity);
-    }
-`;
-
-const GERALD_INSPECTOR_VERTEX_SHADER = `
-    attribute vec3 color;
-    uniform vec3 uFadeCentre;
-    varying vec3 vGeraldColour;
-    varying float vGeraldDepth;
-
-    void main() {
-        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-        vGeraldColour = color;
-        vGeraldDepth = dot(
-            worldPosition.xyz - uFadeCentre,
-            normalize(cameraPosition - uFadeCentre)
-        );
-        gl_Position = projectionMatrix * viewMatrix * worldPosition;
-    }
-`;
-
-const GERALD_INSPECTOR_FRAGMENT_SHADER = `
-    uniform float uFadeEnabled;
-    uniform float uFadeRadius;
-    varying vec3 vGeraldColour;
-    varying float vGeraldDepth;
-
-    void main() {
-        float backFade = smoothstep(
-            -uFadeRadius,
-            -uFadeRadius * 0.12,
-            vGeraldDepth
-        );
-        // Keep the rear projection present as depth information, but quiet
-        // enough that it cannot compete with the front 2D reading.
-        float opacity = 0.22 + 0.78 * backFade;
-        opacity = mix(1.0, opacity, uFadeEnabled) * 0.94;
-        if (opacity < 0.004) discard;
-        gl_FragColor = vec4(vGeraldColour, opacity);
-    }
-`;
-
-function createMartinOrbitMaterial(opacity = 1) {
-    return new THREE.ShaderMaterial({
-        vertexShader: MARTIN_TRAIL_VERTEX_SHADER,
-        fragmentShader: MARTIN_TRAIL_FRAGMENT_SHADER,
-        uniforms: {
-            uGlobalOpacity: { value: opacity }
-        },
-        transparent: true,
-        depthWrite: false,
-        depthTest: true,
-        side: THREE.DoubleSide
-    });
-}
-
-function createGeraldInspectorMaterial() {
-    return new THREE.ShaderMaterial({
-        vertexShader: GERALD_INSPECTOR_VERTEX_SHADER,
-        fragmentShader: GERALD_INSPECTOR_FRAGMENT_SHADER,
-        uniforms: {
-            uFadeEnabled: { value: 0 },
-            uFadeCentre: { value: new THREE.Vector3() },
-            uFadeRadius: { value: 1 }
-        },
-        vertexColors: true,
-        transparent: true,
-        depthWrite: false,
-        side: THREE.DoubleSide
-    });
-}
+const MARTIN_POINT_RADIUS = 0.16;
 
 function laneOffsetForName(name) {
     let hash = 0;
@@ -167,19 +38,6 @@ function laneOffsetForName(name) {
     );
 
     return offset.normalize().multiplyScalar(LANE_OFFSET_DISTANCE);
-}
-
-function martinPhaseForName(name) {
-    const parameters = [name[0], name[2], name[3], name[5]];
-    const parameterIndex = parameters.reduce(
-        (index, letter) => index * 4 + MARTIN_PARAMETER_INDEX[letter],
-        0
-    );
-
-    // The 256 valid four-parameter combinations occupy evenly spaced phase
-    // slots. The first name starts at zero and the final name sits just
-    // before the wrap, keeping the two endpoints visually distinct.
-    return parameterIndex / MARTIN_PHASE_SLOTS;
 }
 
 function createWordLabel(scene, name, curve, colour) {
@@ -259,25 +117,8 @@ export class RonaldPath {
         this.laneOffset = laneOffsetForName(name);
         this.closedPath = Boolean(this.definition.closedPath);
         this.isMartin = universe === "martin";
-        this.isGerald = universe === "gerald";
-        this.geraldCrown = this.isGerald
-            ? this.definition.crownForName(name)
-            : null;
-        this.geraldAudioPhase = 0;
-        this.geraldShiver = 0;
-        this.geraldShiverPhase = 0;
-        this.geraldShiverSide = this.isGerald
-            ? new THREE.Vector3().crossVectors(
-                this.geraldCrown.axis,
-                this.geraldCrown.viewDirection
-            ).normalize()
-            : null;
-        this.geraldInspecting = false;
-        this.martinOrbitProgress = this.isMartin ? martinPhaseForName(name) : 0;
-        this.martinSegmentAges = this.isMartin
-            ? new Float32Array(PATH_SAMPLES).fill(-1)
-            : null;
-        this.martinRevealProgress = 0;
+        this.martinOrbitProgress = 0;
+        this.martinOrbitTurns = 0;
         this.martinBaseOpacity = UNSELECTED_PATH_OPACITY;
 
         const controlPoints = this.definition.createControlPoints(name);
@@ -310,11 +151,7 @@ export class RonaldPath {
 
         for (let ring = 0; ring <= PATH_SAMPLES; ring += 1) {
             const progress = ring / PATH_SAMPLES;
-            const colour = this.isGerald
-                ? (this.hovered || this.selected
-                    ? identityColour.clone().offsetHSL(0, 0.16, -0.01)
-                    : identityColour.clone().lerp(this.agedColour, this.entropy))
-                : new THREE.Color(theme.pathOrigin).lerp(identityColour, progress);
+            const colour = new THREE.Color(theme.pathOrigin).lerp(identityColour, progress);
 
             for (let side = 0; side <= PATH_RADIAL_SEGMENTS; side += 1) {
                 const offset = (ring * (PATH_RADIAL_SEGMENTS + 1) + side) * 3;
@@ -328,25 +165,14 @@ export class RonaldPath {
         }
 
         this.geometry.setAttribute("color", new THREE.BufferAttribute(colours, 3));
-        if (this.isMartin) {
-            const trailOpacity = new Float32Array(
-                (PATH_SAMPLES + 1) * (PATH_RADIAL_SEGMENTS + 1)
-            );
-            this.geometry.setAttribute(
-                "trailOpacity",
-                new THREE.Float32BufferAttribute(trailOpacity, 1)
-            );
-        }
         this.geometry.setDrawRange(0, 0);
-        this.material = this.isMartin
-            ? createMartinOrbitMaterial(UNSELECTED_PATH_OPACITY)
-            : new THREE.MeshBasicMaterial({
-                vertexColors: true,
-                transparent: true,
-                opacity: UNSELECTED_PATH_OPACITY,
-                depthWrite: false,
-                side: THREE.DoubleSide
-            });
+        this.material = new THREE.MeshBasicMaterial({
+            vertexColors: true,
+            transparent: true,
+            opacity: UNSELECTED_PATH_OPACITY,
+            depthWrite: false,
+            side: THREE.DoubleSide
+        });
         this.path = new THREE.Mesh(this.geometry, this.material);
 
         // The finishing segments render after the main path, while retaining
@@ -369,20 +195,31 @@ export class RonaldPath {
             new THREE.BufferAttribute(selectedColours, 3)
         );
         this.selectedGeometry.setDrawRange(0, 0);
-        this.geraldBasePositions = this.isGerald
-            ? this.selectedGeometry.getAttribute("position").array.slice()
-            : null;
-        this.selectedMaterial = this.isGerald
-            ? createGeraldInspectorMaterial()
-            : new THREE.MeshBasicMaterial({
-                vertexColors: true,
-                transparent: true,
-                opacity: 0.94,
-                side: THREE.DoubleSide
-            });
+        this.selectedMaterial = new THREE.MeshBasicMaterial({
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.94,
+            side: THREE.DoubleSide
+        });
         this.selectedPath = new THREE.Mesh(this.selectedGeometry, this.selectedMaterial);
         this.selectedPath.renderOrder = 2;
         this.selectedPath.visible = false;
+
+        this.martinPoint = null;
+        if (this.isMartin) {
+            this.martinPoint = new THREE.Mesh(
+                new THREE.SphereGeometry(MARTIN_POINT_RADIUS, 12, 8),
+                new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 1,
+                    depthWrite: false
+                })
+            );
+            this.martinPoint.renderOrder = 2;
+            this.martinPoint.userData.ronaldPath = this;
+            this.martinPoint.position.copy(this.curve.getPointAt(0));
+        }
 
         [this.path, this.endPath, this.selectedPath].forEach(mesh => {
             mesh.userData.ronaldPath = this;
@@ -394,10 +231,12 @@ export class RonaldPath {
             this.path.visible = false;
             this.endPath.visible = false;
             this.selectedPath.visible = false;
-            this.path.renderOrder = 1;
         }
 
         scene.add(this.path, this.endPath, this.selectedPath);
+        if (this.martinPoint) {
+            scene.add(this.martinPoint);
+        }
     }
 
     setTheme(theme) {
@@ -428,6 +267,9 @@ export class RonaldPath {
             this.setSelected(false);
             this.setHovered(false);
         }
+        if (this.martinPoint) {
+            this.martinPoint.visible = !locked && !this.inactiveUniverse;
+        }
     }
 
     setUniverseVisible(active) {
@@ -435,16 +277,16 @@ export class RonaldPath {
         // disappearing completely. This makes the layer transition legible
         // without allowing cross-universe selection.
         this.inactiveUniverse = !active;
-        // Keep MARTIN's last rendered trail visible as a faint layer while
-        // its universe is inactive; getPickableObjects still prevents input.
-        this.path.visible = true;
-        this.endPath.visible = this.isMartin ? false : true;
+        this.path.visible = active && !this.isMartin;
+        this.endPath.visible = active && !this.isMartin;
         this.selectedPath.visible = active
             && !this.isMartin
             && (this.selected || this.hovered);
+        if (this.martinPoint) {
+            this.martinPoint.visible = active && !this.locked;
+        }
         this.updateBasePathOpacity();
         this.updateWordVisibility();
-        if (!active && this.geraldInspecting) this.setInspection(false);
     }
 
     updateColours() {
@@ -453,34 +295,25 @@ export class RonaldPath {
             this.endGeometry.getAttribute("color")
         ];
 
-        if (this.isMartin) {
-            this.updateMartinTrailAttributes();
-        } else {
-            for (let ring = 0; ring <= PATH_SAMPLES; ring += 1) {
-                const colour = this.isGerald
-                    ? (this.hovered || this.selected
-                        ? this.identityColour.clone().offsetHSL(0, 0.16, -0.01)
-                        : this.identityColour.clone().lerp(this.agedColour, this.entropy))
-                    : new THREE.Color(this.theme.pathOrigin).lerp(
-                        this.identityColour,
-                        ring / PATH_SAMPLES
-                    ).lerp(this.agedColour, this.entropy);
+        for (let ring = 0; ring <= PATH_SAMPLES; ring += 1) {
+            const colour = new THREE.Color(this.theme.pathOrigin).lerp(
+                this.identityColour,
+                ring / PATH_SAMPLES
+            ).lerp(this.agedColour, this.entropy);
 
-                for (let side = 0; side <= PATH_RADIAL_SEGMENTS; side += 1) {
-                    const offset = (ring * (PATH_RADIAL_SEGMENTS + 1) + side) * 3;
-                    colourAttributes.forEach(attribute => {
-                        attribute.array[offset] = colour.r;
-                        attribute.array[offset + 1] = colour.g;
-                        attribute.array[offset + 2] = colour.b;
-                    });
-                }
+            for (let side = 0; side <= PATH_RADIAL_SEGMENTS; side += 1) {
+                const offset = (ring * (PATH_RADIAL_SEGMENTS + 1) + side) * 3;
+                colourAttributes.forEach(attribute => {
+                    attribute.array[offset] = colour.r;
+                    attribute.array[offset + 1] = colour.g;
+                    attribute.array[offset + 2] = colour.b;
+                });
             }
-
-            colourAttributes.forEach(attribute => {
-                attribute.needsUpdate = true;
-            });
         }
 
+        colourAttributes.forEach(attribute => {
+            attribute.needsUpdate = true;
+        });
         const selectedColour = this.identityColour.clone().offsetHSL(0, 0.2, -0.03);
         const selectedAttribute = this.selectedGeometry.getAttribute("color");
 
@@ -520,10 +353,6 @@ export class RonaldPath {
             return;
         }
 
-        if (this.isGerald) {
-            this.updateGeraldCrown(delta);
-        }
-
         if (this.visibleSegments < PATH_SAMPLES) {
             this.visibleSegments = Math.min(
                 PATH_SAMPLES,
@@ -560,69 +389,17 @@ export class RonaldPath {
     }
 
     setSelected(selected) {
-        if (selected && !this.selected && this.isGerald) {
-            this.triggerShiver(0.105);
-            this.geraldAudioPhase = 0;
-        }
         this.selected = selected;
         this.updateLaneOffset();
         this.updateBasePathOpacity();
-        this.updateHighlightVisibility();
-        if (this.isGerald) this.updateColours();
-    }
-
-    triggerShiver(amount = 0.105) {
-        if (!this.isGerald) return;
-        this.geraldShiver = Math.max(this.geraldShiver, amount);
-        this.geraldShiverPhase = 0;
-    }
-
-    setInspection(inspecting) {
-        if (!this.isGerald || this.geraldInspecting === inspecting) return;
-        this.geraldInspecting = inspecting;
-        if (inspecting) {
-            this.path.visible = false;
-            this.endPath.visible = false;
-            this.selectedPath.quaternion.copy(this.path.quaternion);
-            this.selectedPath.scale.copy(this.path.scale);
-            this.selectedPath.visible = true;
-            if (this.selectedMaterial.uniforms?.uFadeEnabled) {
-                this.selectedMaterial.uniforms.uFadeEnabled.value = 1;
-                this.selectedMaterial.uniforms.uFadeCentre.value.copy(
-                    this.getFocusTarget()
-                );
-                this.selectedMaterial.uniforms.uFadeRadius.value = (
-                    this.geraldCrown.radius + SELECTED_PATH_TUBE_RADIUS
-                );
-            }
-            if (this.word) this.word.label.visible = false;
-            return;
-        }
-        this.path.visible = true;
-        this.endPath.visible = true;
-        this.selectedPath.quaternion.copy(this.path.quaternion);
-        this.selectedPath.scale.copy(this.path.scale);
-        if (this.selectedMaterial.uniforms?.uFadeEnabled) {
-            this.selectedMaterial.uniforms.uFadeEnabled.value = 0;
-        }
         this.updateHighlightVisibility();
     }
 
     setHovered(hovered) {
         this.hovered = hovered;
-        if (hovered && this.isGerald && !this.selected) {
-            this.geraldShiver = Math.max(this.geraldShiver, 0.022);
-            this.geraldShiverPhase = 0;
-            this.geraldAudioPhase = 0;
-        }
-        if (!hovered && !this.selected && this.isGerald && !this.geraldInspecting) {
-            this.selectedPath.quaternion.copy(this.path.quaternion);
-            this.selectedPath.scale.copy(this.path.scale);
-        }
         this.updateLaneOffset();
         this.updateBasePathOpacity();
         this.updateHighlightVisibility();
-        if (this.isGerald) this.updateColours();
     }
 
     setLabelSuppressed(suppressed) {
@@ -647,9 +424,8 @@ export class RonaldPath {
             return [];
         }
 
-        if (this.isGerald && this.geraldInspecting) return [this.selectedPath];
         return this.isMartin
-            ? [this.path]
+            ? [this.martinPoint]
             : [this.path, this.endPath, this.selectedPath];
     }
 
@@ -663,108 +439,6 @@ export class RonaldPath {
         return Math.max(1, this.geometry.boundingSphere.radius);
     }
 
-    getInspectionViewDirection() {
-        return this.geraldCrown?.viewDirection.clone() ?? null;
-    }
-
-    getInspectionUpDirection() {
-        return this.geraldCrown?.axis.clone() ?? null;
-    }
-
-    getInspectionDistance() {
-        // Side-on inspection targets roughly 70% of the viewport width.
-        return this.isGerald ? this.geraldCrown.radius * 2.05 : null;
-    }
-
-    updateGeraldCrown(delta) {
-        if (this.inactiveUniverse || this.locked) return;
-        const rotation = new THREE.Quaternion().setFromAxisAngle(
-            this.geraldCrown.axis,
-            GERALD_IDLE_ROTATION_SPEED * delta
-        );
-        [this.path, this.endPath, this.selectedPath].forEach(mesh => {
-            mesh.quaternion.premultiply(rotation);
-        });
-
-        if (this.geraldInspecting || this.hovered || this.selected) {
-            this.geraldAudioPhase = THREE.MathUtils.euclideanModulo(
-                this.geraldAudioPhase + delta * this.geraldCrown.frequency,
-                1
-            );
-        }
-        this.geraldShiver *= Math.exp(-delta * 10.5);
-        this.geraldShiverPhase += delta * 48;
-        this.updateGeraldShiverGeometry();
-    }
-
-    updateGeraldShiverGeometry() {
-        if (!this.geraldBasePositions) return;
-        const positions = this.selectedGeometry.getAttribute("position");
-        const amplitude = this.geraldShiver;
-        const phase = this.geraldShiverPhase;
-        const live = this.geraldInspecting || this.hovered || this.selected;
-        const audioAmplitude = GERALD_LIVE_VISUAL_AMPLITUDE;
-
-        for (let vertex = 0; vertex < positions.count; vertex += 1) {
-            const offset = vertex * 3;
-            let waveOffset = 0;
-            if (live) {
-                const ring = Math.floor(vertex / (PATH_RADIAL_SEGMENTS + 1));
-                const progress = Math.min(1, ring / PATH_SAMPLES);
-                const recipeWave = geraldWaveValue(
-                    this.geraldCrown.waveform,
-                    progress * this.geraldCrown.cycles
-                );
-                const actualWave = liveGeraldWaveValue(
-                    this.geraldCrown,
-                    progress,
-                    this.geraldAudioPhase
-                );
-                // Move the frozen recipe to the actual audio wave, rather
-                // than layering a second waveform on top of it.
-                waveOffset = (actualWave - recipeWave) * audioAmplitude;
-            }
-            if (amplitude < 0.00001) {
-                positions.array[offset] = this.geraldBasePositions[offset]
-                    + this.geraldCrown.axis.x * waveOffset;
-                positions.array[offset + 1] = this.geraldBasePositions[offset + 1]
-                    + this.geraldCrown.axis.y * waveOffset;
-                positions.array[offset + 2] = this.geraldBasePositions[offset + 2]
-                    + this.geraldCrown.axis.z * waveOffset;
-                continue;
-            }
-
-            const noiseA = Math.sin(vertex * 0.73 + phase) * 0.62
-                + Math.sin(vertex * 1.91 - phase * 0.71) * 0.38;
-            const noiseB = Math.sin(vertex * 1.17 - phase * 1.13) * 0.58
-                + Math.sin(vertex * 2.47 + phase * 0.61) * 0.42;
-            const noiseC = Math.sin(vertex * 2.03 + phase * 0.83) * 0.5
-                + Math.sin(vertex * 0.41 - phase * 1.47) * 0.5;
-            // Keep the same decay and irregular motion, but make the
-            // Vib-Ribbon-style deformation three times more legible.
-            const jitter = amplitude * 5.4;
-            const baseX = this.geraldBasePositions[offset];
-            const baseY = this.geraldBasePositions[offset + 1];
-            const baseZ = this.geraldBasePositions[offset + 2];
-            positions.array[offset] = baseX
-                + this.geraldCrown.axis.x * waveOffset
-                + (this.geraldCrown.axis.x * noiseA
-                    + this.geraldCrown.viewDirection.x * noiseB
-                    + this.geraldShiverSide.x * noiseC) * jitter;
-            positions.array[offset + 1] = baseY
-                + this.geraldCrown.axis.y * waveOffset
-                + (this.geraldCrown.axis.y * noiseA
-                    + this.geraldCrown.viewDirection.y * noiseB
-                    + this.geraldShiverSide.y * noiseC) * jitter;
-            positions.array[offset + 2] = baseZ
-                + this.geraldCrown.axis.z * waveOffset
-                + (this.geraldCrown.axis.z * noiseA
-                    + this.geraldCrown.viewDirection.z * noiseB
-                    + this.geraldShiverSide.z * noiseC) * jitter;
-        }
-        positions.needsUpdate = true;
-    }
-
     updateWordVisibility() {
         if (this.word) {
             this.word.label.visible = !this.inactiveUniverse
@@ -774,15 +448,6 @@ export class RonaldPath {
     }
 
     updateHighlightVisibility() {
-        if (this.isGerald) {
-            const attentive = this.selected || this.hovered || this.geraldInspecting;
-            this.path.visible = !attentive;
-            this.endPath.visible = !attentive;
-            this.selectedPath.visible = attentive;
-            this.updateWordVisibility();
-            if (this.geraldInspecting && this.word) this.word.label.visible = false;
-            return;
-        }
         this.selectedPath.visible = !this.inactiveUniverse
             && !this.isMartin
             && (this.selected || this.hovered);
@@ -798,6 +463,10 @@ export class RonaldPath {
         this.path.position.copy(offset);
         this.endPath.position.copy(offset);
         this.selectedPath.position.copy(highlightOffset);
+
+        if (this.martinPoint) {
+            this.martinPoint.userData.laneOffset = offset;
+        }
     }
 
     updateBasePathOpacity() {
@@ -808,120 +477,33 @@ export class RonaldPath {
             : UNSELECTED_PATH_OPACITY;
 
         this.martinBaseOpacity = opacity;
-        if (this.isMartin) {
-            this.material.uniforms.uGlobalOpacity.value = opacity;
-        } else {
-            this.material.opacity = opacity;
-            this.endMaterial.opacity = opacity;
-        }
-    }
-
-    updateMartinTrailAttributes() {
-        if (!this.isMartin || !this.martinSegmentAges) {
-            return;
-        }
-
-        const trailColour = this.identityColour.clone().lerp(this.agedColour, this.entropy);
-        const white = new THREE.Color(0xffffff);
-        const segmentColour = new THREE.Color();
-        const attributeSets = [
-            {
-                colour: this.geometry.getAttribute("color"),
-                opacity: this.geometry.getAttribute("trailOpacity")
-            },
-            {
-                colour: this.endGeometry.getAttribute("color"),
-                opacity: this.endGeometry.getAttribute("trailOpacity")
-            }
-        ];
-
-        for (let ring = 0; ring <= PATH_SAMPLES; ring += 1) {
-            const sourceRing = ring === PATH_SAMPLES ? 0 : ring;
-            const age = this.martinSegmentAges[sourceRing];
-            const ageProgress = age < 0
-                ? 1
-                : THREE.MathUtils.clamp(age / MARTIN_TRAIL_LIFETIME_SECONDS, 0, 1);
-            const colourProgress = THREE.MathUtils.smoothstep(
-                ageProgress,
-                MARTIN_HEAD_LENGTH,
-                MARTIN_COLOUR_LENGTH
-            );
-            const fadeProgress = THREE.MathUtils.smoothstep(
-                ageProgress,
-                MARTIN_COLOUR_LENGTH,
-                1
-            );
-            const opacity = age < 0 ? 0 : 1 - fadeProgress;
-
-            segmentColour.copy(white).lerp(trailColour, colourProgress);
-            for (let side = 0; side <= PATH_RADIAL_SEGMENTS; side += 1) {
-                const vertex = ring * (PATH_RADIAL_SEGMENTS + 1) + side;
-                attributeSets.forEach(attributes => {
-                    attributes.colour.setXYZ(
-                        vertex,
-                        segmentColour.r,
-                        segmentColour.g,
-                        segmentColour.b
-                    );
-                    attributes.opacity.setX(vertex, opacity);
-                });
-            }
-        }
-
-        attributeSets.forEach(attributes => {
-            attributes.colour.needsUpdate = true;
-            attributes.opacity.needsUpdate = true;
-        });
+        this.material.opacity = opacity;
+        this.endMaterial.opacity = opacity;
     }
 
     updateMartinOrbit(delta, camera, renderer) {
-        if (this.inactiveUniverse || this.locked) {
-            return;
+        this.martinOrbitProgress += delta / MARTIN_ORBIT_SECONDS;
+        while (this.martinOrbitProgress >= 1) {
+            this.martinOrbitProgress -= 1;
+            this.martinOrbitTurns += 1;
         }
 
-        const orbitStep = delta / MARTIN_ORBIT_SECONDS;
-        const previousProgress = this.martinOrbitProgress;
-        this.martinOrbitProgress = THREE.MathUtils.euclideanModulo(
-            previousProgress + orbitStep,
-            1
-        );
+        const progress = this.martinOrbitProgress;
+        const point = this.curve.getPointAt(progress);
+        const offset = this.martinPoint.userData.laneOffset ?? this.laneOffset;
+        this.martinPoint.position.copy(point).add(offset);
 
-        for (let ring = 0; ring < PATH_SAMPLES; ring += 1) {
-            const age = this.martinSegmentAges[ring];
-            if (age >= 0) {
-                this.martinSegmentAges[ring] = Math.min(
-                    MARTIN_TRAIL_LIFETIME_SECONDS,
-                    age + delta
-                );
-            }
+        const colourProgress = THREE.MathUtils.smoothstep(progress, 0, 0.55);
+        const fadeProgress = THREE.MathUtils.smoothstep(progress, 0.55, 1);
+        const pointColour = new THREE.Color(0xffffff)
+            .lerp(this.identityColour, colourProgress)
+            .lerp(this.agedColour, this.entropy);
+        this.martinPoint.material.color.copy(pointColour);
+        this.martinPoint.material.opacity = this.martinBaseOpacity * (1 - fadeProgress);
+        this.martinPoint.scale.setScalar(this.selected ? 1.3 : this.hovered ? 1.12 : 1);
 
-            const ringProgress = ring / PATH_SAMPLES;
-            const distanceTravelled = THREE.MathUtils.euclideanModulo(
-                ringProgress - previousProgress,
-                1
-            );
-            if (distanceTravelled <= orbitStep + 0.000001) {
-                this.martinSegmentAges[ring] = 0;
-            }
-        }
-
-        // Keep a small, crisp white head even between adjacent orbit rings.
-        const headRing = Math.round(this.martinOrbitProgress * PATH_SAMPLES) % PATH_SAMPLES;
-        this.martinSegmentAges[headRing] = 0;
-        this.geometry.setDrawRange(0, PATH_SAMPLES * PATH_RADIAL_SEGMENTS * 6);
-        this.updateMartinTrailAttributes();
-        this.path.visible = true;
-
-        // MARTIN's orbital motion is independent of its discovery animation.
-        // Use the same reveal clock as RONALD/RODNEY so its label is not held
-        // back until the first seven-second orbit completes.
-        this.martinRevealProgress = Math.min(
-            1,
-            this.martinRevealProgress
-                + delta * PATH_GROWTH_PER_SECOND / PATH_SAMPLES
-        );
-        if (this.martinRevealProgress < 1) {
-            this.updateWord(this.martinRevealProgress, camera, renderer);
+        if (this.martinOrbitTurns === 0) {
+            this.updateWord(progress, camera, renderer);
             return;
         }
 
@@ -1111,6 +693,12 @@ export class RonaldPath {
         this.endMaterial.dispose();
         this.selectedGeometry.dispose();
         this.selectedMaterial.dispose();
+
+        if (this.martinPoint) {
+            this.scene.remove(this.martinPoint);
+            this.martinPoint.geometry.dispose();
+            this.martinPoint.material.dispose();
+        }
 
         if (this.word) {
             this.scene.remove(this.word.label);

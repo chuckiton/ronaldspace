@@ -1,5 +1,5 @@
-import { GODNEY_NAME } from "./constants.js?v=20260722-gerald-live-wave";
-import { getUniverse } from "./universes.js?v=20260722-gerald-live-wave";
+import { GODNEY_NAME } from "./constants.js?v=20260720-gordon-stage";
+import { getUniverse } from "./universes.js?v=20260720-gordon-stage";
 
 const ENTRY_MODES = ["random", "enter", "build"];
 const ENTRY_MODE_LABELS = {
@@ -410,7 +410,7 @@ export class RonaldInput {
             return;
         }
 
-        const submittedRonald = this.onDraw(name, { audition: true });
+        const submittedRonald = this.onDraw(name);
         this.flashSubmitButton(submittedRonald);
         if (this.mode === "enter") {
             this.input.value = "";
@@ -448,7 +448,7 @@ export class RonaldInput {
                     this.updateRandom();
                     return;
                 }
-                const submittedRonald = this.onDraw(this.randomName, { audition: true });
+                const submittedRonald = this.onDraw(this.randomName);
                 this.flashSubmitButton(submittedRonald);
                 this.updateModeButtons();
                 this.updateRandom();

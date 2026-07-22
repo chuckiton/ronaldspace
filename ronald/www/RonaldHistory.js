@@ -23,8 +23,8 @@ export class RonaldHistory {
         entry.addEventListener("pointerleave", () => {
             this.onHoverChange(null, ronald);
         });
-        entry.addEventListener("click", event => {
-            this.onSelect(ronald, event);
+        entry.addEventListener("click", () => {
+            this.onSelect(ronald);
         });
 
         this.entries.set(ronald, entry);

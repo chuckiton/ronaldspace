@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-import { AXIS_LABEL_RADIUS, COORDINATE_SCALE } from "./constants.js?v=20260722-gerald-live-wave";
+import { AXIS_LABEL_RADIUS, COORDINATE_SCALE } from "./constants.js?v=20260720-gordon-stage";
 
 function drawAxisLabel(label, colour) {
     label.context.clearRect(0, 0, 256, 128);

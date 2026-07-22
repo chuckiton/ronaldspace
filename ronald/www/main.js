@@ -3,13 +3,12 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
-import { RonaldInput } from "./RonaldInput.js?v=20260722-gerald-live-wave";
-import { RonaldHistory } from "./RonaldHistory.js?v=20260722-gerald-live-wave";
-import { RonaldPath } from "./RonaldPath.js?v=20260722-gerald-live-wave";
-import { GordonObject } from "./GordonObject.js?v=20260721-gordon-pointed-bipyramid";
-import { GeraldSynth } from "./GeraldSynth.js?v=20260722-gerald-live-wave";
-import { initialiseRonaldSpace } from "./RonaldSpace.js?v=20260722-gerald-live-wave";
-import { getUniverse, UNIVERSES } from "./universes.js?v=20260722-gerald-live-wave";
+import { RonaldInput } from "./RonaldInput.js?v=20260720-random-universe-refresh";
+import { RonaldHistory } from "./RonaldHistory.js?v=20260720-gordon-facet-picking";
+import { RonaldPath } from "./RonaldPath.js?v=20260721-generic-inspector";
+import { GordonObject } from "./GordonObject.js?v=20260721-generic-inspector";
+import { initialiseRonaldSpace } from "./RonaldSpace.js?v=20260720-gordon-stage";
+import { getUniverse, UNIVERSES } from "./universes.js?v=20260720-gordon-stage";
 
 const scene = new THREE.Scene();
 // A stable studio key lets facets move through light and shadow when the
@@ -35,7 +34,6 @@ camera.position.set(18, 13, 22);
 camera.lookAt(0, 0, 0);
 const HOME_CAMERA_POSITION = camera.position.clone();
 const HOME_CAMERA_TARGET = new THREE.Vector3();
-const HOME_CAMERA_UP = camera.up.clone();
 const CAMERA_ORBIT_AXIS = new THREE.Vector3(0, 1, 0);
 const CAMERA_ORBIT_SPEED = THREE.MathUtils.degToRad(6);
 
@@ -74,7 +72,6 @@ updateGordonRenderPipeline();
 const space = initialiseRonaldSpace(scene, theme, getUniverse(universe).vectors);
 const ronalds = [];
 let selectedRonald = null;
-const selectedRonalds = new Set();
 const identifiedNames = Object.fromEntries(
     Object.keys(UNIVERSES).map(id => [id, 0])
 );
@@ -91,42 +88,21 @@ const confirmMartinButton = document.querySelector("#confirm-martin");
 const gordonWarning = document.querySelector("#gordon-warning");
 const cancelGordonButton = document.querySelector("#cancel-gordon");
 const confirmGordonButton = document.querySelector("#confirm-gordon");
-const geraldWarning = document.querySelector("#gerald-warning");
-const cancelGeraldButton = document.querySelector("#cancel-gerald");
-const confirmGeraldButton = document.querySelector("#confirm-gerald");
 const godneyWarning = document.querySelector("#godney-warning");
 const acknowledgeGodneyButton = document.querySelector("#acknowledge-godney");
 const layerMenu = document.querySelector("#layer-menu");
-const inspectorExitButton = document.querySelector("#abandon-gordon");
+const abandonGordonButton = document.querySelector("#abandon-gordon");
 const orbitCameraButton = document.querySelector("#orbit-camera");
-const geraldSynth = new GeraldSynth();
 let hoveredRonald = null;
 let focusedEntity = null;
 let cameraTransition = null;
 let cameraOrbiting = false;
-let orbitStartedByFocus = false;
 
-const INSPECTOR_EXIT_PREFIXES = {
-    ronald: "Thank you, ",
-    rodney: "Begone, ",
-    martin: "Disregard ",
-    gordon: "Forsake ",
-    gerald: "Mute "
+const INSPECTOR_EXIT_LABELS = {
+    ronald: "thank you RONALD",
+    rodney: "forsake RODNEY",
+    martin: "disregard MARTIN"
 };
-
-function setInspectorExitLabel(ronald) {
-    if (!ronald) {
-        return;
-    }
-
-    const prefix = INSPECTOR_EXIT_PREFIXES[ronald.universe];
-    if (!prefix) {
-        return;
-    }
-    const label = `${prefix}${ronald.name}`;
-    inspectorExitButton.textContent = label;
-    inspectorExitButton.setAttribute("aria-label", label);
-}
 
 function findRonald(name) {
     return ronalds.find(ronald => ronald.universe === universe && ronald.name === name);
@@ -164,90 +140,17 @@ function updateClearAllButton() {
     clearAllButton.disabled = discovered === 0;
 }
 
-function updateGeraldAudition() {
-    const selectedNames = [...selectedRonalds]
-        .filter(ronald => ronald.universe === "gerald")
-        .map(ronald => ronald.name);
-    const hoverOnly = hoveredRonald?.universe === "gerald"
-        && !selectedRonalds.has(hoveredRonald);
-    const names = focusedEntity?.universe === "gerald"
-        ? [focusedEntity.name]
-        : hoverOnly
-        ? [hoveredRonald.name]
-        : selectedNames.length > 0
-        ? selectedNames
-        : hoveredRonald?.universe === "gerald"
-        ? [hoveredRonald.name]
-        : [];
-    const scrutiny = focusedEntity?.universe === "gerald"
-        ? 3
-        : hoverOnly
-        ? 1
-        : selectedNames.length > 0
-        ? 2
-        : hoveredRonald?.universe === "gerald"
-        ? 1
-        : 0;
-    geraldSynth.setNames(names);
-    geraldSynth.setScrutiny(scrutiny);
-}
-
-function selectRonald(ronald, {
-    additive = false,
-    audition = false,
-    toggleSame = false
-} = {}) {
+function selectRonald(ronald) {
     if (ronald.locked || ronald.universe !== universe) {
         return;
     }
-
-    if (toggleSame && !additive && selectedRonald === ronald && selectedRonalds.size === 1) {
-        ronald.setSelected(false);
-        selectedRonalds.clear();
-        selectedRonald = null;
-        history.setSelected(null);
-        if (focusedEntity === ronald) abandonFocus();
-        updateGeraldAudition();
-        return;
+    if (selectedRonald) {
+        selectedRonald.setSelected(false);
     }
 
-    if (additive) {
-        if (selectedRonalds.has(ronald)) {
-            ronald.setSelected(false);
-            selectedRonalds.delete(ronald);
-            if (selectedRonald === ronald) {
-                selectedRonald = [...selectedRonalds].at(-1) ?? null;
-            }
-        } else {
-            ronald.setSelected(true);
-            selectedRonalds.add(ronald);
-            selectedRonald = ronald;
-        }
-    } else {
-        selectedRonalds.forEach(selected => {
-            if (selected !== ronald) selected.setSelected(false);
-        });
-        selectedRonalds.clear();
-        selectedRonalds.add(ronald);
-        selectedRonald = ronald;
-        ronald.setSelected(true);
-    }
-
+    selectedRonald = ronald;
+    selectedRonald.setSelected(true);
     history.setSelected(selectedRonald);
-    if (audition && ronald.universe === "gerald") {
-        geraldSynth.setEnabled(true);
-    }
-    updateGeraldAudition();
-}
-
-function clearActiveSelection() {
-    selectedRonalds.forEach(selected => selected.setSelected(false));
-    selectedRonalds.clear();
-    selectedRonald = null;
-    history.setSelected(null);
-    setHoveredRonald(null);
-    if (focusedEntity) abandonFocus();
-    updateGeraldAudition();
 }
 
 function transitionCamera(position, target, duration) {
@@ -329,53 +232,34 @@ function updateCameraOrbit(delta) {
     controls.target.copy(target);
 }
 
-function focusEntity(ronald, { activateOrbit = false } = {}) {
+function focusEntity(ronald) {
     if (ronald.locked || ronald.universe !== universe) {
         return;
     }
 
-    if (focusedEntity && focusedEntity !== ronald) {
-        focusedEntity.setInspection?.(false);
-    }
-    selectRonald(ronald, { audition: true });
-    ronald.triggerShiver?.(0.105);
-    ronald.setInspection?.(true);
+    selectRonald(ronald);
     focusedEntity = ronald;
-    setInspectorExitLabel(ronald);
-    inspectorExitButton.hidden = false;
+    const exitLabel = INSPECTOR_EXIT_LABELS[ronald.universe]
+        ?? `Abandon ${ronald.name}`;
+    abandonGordonButton.textContent = exitLabel;
+    abandonGordonButton.setAttribute("aria-label", exitLabel);
+    abandonGordonButton.hidden = false;
 
-    const target = ronald.getFocusTarget();
-    const inspectionViewDirection = ronald.getInspectionViewDirection?.();
-    const inspectionUpDirection = ronald.getInspectionUpDirection?.();
-    camera.up.copy(inspectionUpDirection ?? HOME_CAMERA_UP);
-    const viewingDirection = inspectionViewDirection ?? camera.position.clone()
+    const viewingDirection = camera.position.clone()
         .sub(controls.target)
         .normalize();
-    const distance = ronald.getInspectionDistance?.()
-        ?? Math.max(8, ronald.getFocusRadius() * 3);
+    const distance = Math.max(8, ronald.getFocusRadius() * 3);
+    const target = ronald.getFocusTarget();
     const position = target.clone().addScaledVector(viewingDirection, distance);
     transitionCamera(position, target, 0.38);
-
-    if (activateOrbit && !cameraOrbiting) {
-        orbitStartedByFocus = true;
-        setCameraOrbiting(true);
-    }
-    updateGeraldAudition();
 }
 
 function abandonFocus() {
-    const dismissedEntity = focusedEntity;
-    dismissedEntity?.setInspection?.(false);
     focusedEntity = null;
-    camera.up.copy(HOME_CAMERA_UP);
-    if (orbitStartedByFocus) {
-        orbitStartedByFocus = false;
-        setCameraOrbiting(false);
-    }
-    setInspectorExitLabel(dismissedEntity);
-    inspectorExitButton.hidden = true;
+    abandonGordonButton.textContent = "Abandon GORDON";
+    abandonGordonButton.setAttribute("aria-label", "Abandon GORDON");
+    abandonGordonButton.hidden = true;
     transitionCamera(HOME_CAMERA_POSITION, HOME_CAMERA_TARGET, 0.48);
-    updateGeraldAudition();
 }
 
 function setHoveredRonald(nextHoveredRonald, departingRonald = null) {
@@ -396,14 +280,9 @@ function setHoveredRonald(nextHoveredRonald, departingRonald = null) {
         );
     });
     history.setHovered(hoveredRonald);
-    updateGeraldAudition();
 }
 
-function selectFromHistory(ronald, event) {
-    if (event?.shiftKey) {
-        selectRonald(ronald, { additive: true, audition: true });
-        return;
-    }
+function selectFromHistory(ronald) {
     focusEntity(ronald);
 }
 
@@ -429,7 +308,7 @@ function addRonald(name) {
     return ronald;
 }
 
-function discoverRonald(name, { audition = false } = {}) {
+function discoverRonald(name) {
     if (!isNameInActiveUniverse(name)) {
         return null;
     }
@@ -437,14 +316,14 @@ function discoverRonald(name, { audition = false } = {}) {
     const existingRonald = findRonald(name);
 
     if (existingRonald) {
-        selectRonald(existingRonald, { audition });
+        selectRonald(existingRonald);
         return existingRonald;
     }
 
     ronalds.filter(ronald => ronald.universe === universe).forEach(ronald => ronald.increaseEntropy());
     history.refresh();
     const ronald = addRonald(name);
-    selectRonald(ronald, { audition });
+    selectRonald(ronald);
     updateRonaldCount();
     updateUnveilAllButton();
     updateClearAllButton();
@@ -477,11 +356,6 @@ const input = new RonaldInput(
 
         if (transition.id === "gordon-discovery") {
             openGordonWarning();
-            return;
-        }
-
-        if (transition.id === "gerald-discovery") {
-            openGeraldWarning();
         }
     }
 );
@@ -517,8 +391,7 @@ clearAllButton.addEventListener("click", () => {
     if (focusedEntity) {
         abandonFocus();
     }
-    selectedRonalds.forEach(selected => selected.setSelected(false));
-    selectedRonalds.clear();
+    selectedRonald?.setSelected(false);
     selectedRonald = null;
     history.setSelected(null);
     setHoveredRonald(null);
@@ -550,8 +423,7 @@ function setUniverse(nextUniverse) {
     if (focusedEntity) {
         abandonFocus();
     }
-    selectedRonalds.forEach(selected => selected.setSelected(false));
-    selectedRonalds.clear();
+    selectedRonald?.setSelected(false);
     selectedRonald = null;
     history.setSelected(null);
     setHoveredRonald(null);
@@ -579,8 +451,6 @@ function setUniverse(nextUniverse) {
     });
     history.setUniverse(universe);
     input.setUniverse(universe);
-    geraldSynth.setVisible(universe === "gerald");
-    updateGeraldAudition();
     updateUniverseNavigations();
     updateRonaldCount();
     updateUnveilAllButton();
@@ -647,24 +517,6 @@ confirmGordonButton.addEventListener("click", () => {
     discoverRonald("GORDON");
 });
 
-function openGeraldWarning() {
-    geraldWarning.hidden = false;
-    cancelGeraldButton.focus();
-}
-
-function closeGeraldWarning() {
-    geraldWarning.hidden = true;
-    input.clearEntry();
-}
-
-cancelGeraldButton.addEventListener("click", closeGeraldWarning);
-confirmGeraldButton.addEventListener("click", () => {
-    closeGeraldWarning();
-    unlockUniverse("gerald");
-    setUniverse("gerald");
-    discoverRonald("GERALD");
-});
-
 function openGodneyWarning() {
     godneyWarning.hidden = false;
     acknowledgeGodneyButton.focus();
@@ -676,7 +528,7 @@ function closeGodneyWarning() {
 }
 
 acknowledgeGodneyButton.addEventListener("click", closeGodneyWarning);
-inspectorExitButton.addEventListener("click", abandonFocus);
+abandonGordonButton.addEventListener("click", abandonFocus);
 orbitCameraButton.addEventListener("click", toggleCameraOrbit);
 
 window.addEventListener("keydown", event => {
@@ -684,7 +536,6 @@ window.addEventListener("keydown", event => {
         const warningOpen = !rodneyWarning.hidden
             || !martinWarning.hidden
             || !gordonWarning.hidden
-            || !geraldWarning.hidden
             || !godneyWarning.hidden;
 
         if (!warningOpen) {
@@ -704,8 +555,6 @@ window.addEventListener("keydown", event => {
         ? confirmMartinButton
         : !gordonWarning.hidden
         ? confirmGordonButton
-        : !geraldWarning.hidden
-        ? confirmGeraldButton
         : !godneyWarning.hidden
         ? acknowledgeGodneyButton
         : null;
@@ -726,17 +575,17 @@ layerMenu.addEventListener("click", event => {
     if (layer) setUniverse(layer);
 });
 
-if (testingTarget === "gordon" || testingTarget === "gerald") {
+if (testingTarget === "gordon") {
     // Deliberately URL-only: this is a test harness, not a discoverable app
     // control. It grants the route and materialises a useful reference gem.
-    ["rodney", "martin", "gordon", "gerald"].forEach(unlockUniverse);
-    setUniverse(testingTarget);
-    discoverRonald(testingTarget === "gerald" ? "GERALD" : "GORDON");
+    ["rodney", "martin", "gordon"].forEach(unlockUniverse);
+    setUniverse("gordon");
+    discoverRonald("GORDON");
 }
 
 space.fontReady.then(() => {
     input.setTypefaceReady();
-    if (testingTarget === "gordon" || testingTarget === "gerald") {
+    if (testingTarget === "gordon") {
         input.clearEntry();
         return;
     }
@@ -835,57 +684,7 @@ function pickGordonOnScreen(event, bounds, allowNearestGordon) {
         : null;
 }
 
-function pointerInsideGeraldRing(ronald, event) {
-    if (ronald?.universe !== "gerald") {
-        return false;
-    }
-
-    const bounds = renderer.domElement.getBoundingClientRect();
-    const centre = ronald.getFocusTarget();
-    const projectedCentre = centre.clone().project(camera);
-    if (projectedCentre.z < -1 || projectedCentre.z > 1) {
-        return false;
-    }
-
-    // Use the complete local bounding sphere rather than the currently
-    // visible waveform segments. This keeps the hover target stable while the
-    // live crown rotates through the pointer.
-    const radius = ronald.getFocusRadius();
-    const cameraRight = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-    const cameraUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
-    const screenCentreX = bounds.left + (projectedCentre.x + 1) * bounds.width / 2;
-    const screenCentreY = bounds.top + (1 - projectedCentre.y) * bounds.height / 2;
-    const projectedRight = centre.clone()
-        .addScaledVector(cameraRight, radius)
-        .project(camera);
-    const projectedUp = centre.clone()
-        .addScaledVector(cameraUp, radius)
-        .project(camera);
-    const screenRadius = Math.max(
-        28,
-        Math.hypot(
-            (projectedRight.x - projectedCentre.x) * bounds.width / 2,
-            (projectedRight.y - projectedCentre.y) * bounds.height / 2
-        ),
-        Math.hypot(
-            (projectedUp.x - projectedCentre.x) * bounds.width / 2,
-            (projectedUp.y - projectedCentre.y) * bounds.height / 2
-        )
-    );
-
-    return Math.hypot(
-        event.clientX - screenCentreX,
-        event.clientY - screenCentreY
-    ) <= screenRadius;
-}
-
 function updateHoveredRonald(event) {
-    if (
-        hoveredRonald?.universe === "gerald"
-        && pointerInsideGeraldRing(hoveredRonald, event)
-    ) {
-        return;
-    }
     const nextHoveredRonald = pickRonald(event);
     setHoveredRonald(nextHoveredRonald);
 }
@@ -893,13 +692,7 @@ function updateHoveredRonald(event) {
 function selectRonaldAt(event) {
     const clickedRonald = pickRonald(event, true);
     if (clickedRonald) {
-        selectRonald(clickedRonald, {
-            additive: event.shiftKey,
-            audition: true,
-            toggleSame: true
-        });
-    } else if (!event.shiftKey) {
-        clearActiveSelection();
+        selectRonald(clickedRonald);
     }
     return clickedRonald;
 }
@@ -941,6 +734,9 @@ renderer.domElement.addEventListener("pointerup", event => {
     pointerStart = null;
     canvasTap = dragDistance <= 4;
 
+    if (canvasTap) {
+        selectRonaldAt(event);
+    }
 });
 
 renderer.domElement.addEventListener("click", event => {
@@ -957,9 +753,7 @@ renderer.domElement.addEventListener("dblclick", event => {
 
     if (clickedRonald) {
         event.preventDefault();
-        focusEntity(clickedRonald, {
-            activateOrbit: clickedRonald.universe !== "gerald"
-        });
+        focusEntity(clickedRonald);
     }
 });
 
