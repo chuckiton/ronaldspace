@@ -82,46 +82,55 @@ The MARTIN tetrahedral vectors are:
 | --- | --- | --- | --- |
 | (-1, +1, -1) | (+1, +1, +1) | (+1, -1, -1) | (-1, -1, +1) |
 
-### GERALDverse — crowns and tone
+### GERALDverse — waveform crowns and tone
 
-Every GERALD is a seamless waveform crown: a fixed-amplitude linear wave bent
-into an unbroken halo with an integer cycle count. Unselected crowns rotate
-slowly and silently around their own wheel axis. Selection plucks and animates
-the crown while playing it; inspection brings that same crown forward as the
-oscilloscope view. Hover, selection, and inspection use successively louder
-audition levels.
+Every GERALD is a complete, unbroken waveform crown: a readable resting
+recipe bent into a circular ring with an integer number of spatial cycles. The
+ring rotates slowly and silently around its wheel axis at every attention level;
+rotation is deliberately independent of the audio animation.
+
+The four active consonants control both geometry and sound:
 
 | Slot | Visual meaning | G | R | L | D |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Wheel axis | Z | X | Near-Y | XYZ diagonal |
-| 2 | Axial position | −7.2 | −2.4 | +2.4 | +7.2 |
-| 3 | Crown radius / sleeve | 4.2 | 5.4 | 6.6 | 7.8 |
-| 4 | Complete cycles | 3 | 4 | 5 | 6 |
+| 1 | Wheel axis | (−1,+1,−1) | (+1,+1,+1) | (−1,−1,+1) | (+1,−1,−1) |
+| 2 | Positive axial displacement / recipe waveform | +2.4 / sine | +7.2 / sawtooth | +12 / square | +16.8 / triangle |
+| 3 | Radius / harmonic count | 1.5 / 0 | 4.1 / 1 | 6.7 / 2 | 9.3 / 3 |
+| 4 | Spatial cycles / distortion drive | 3 / 0 | 4 / 18 | 5 / 58 | 6 / 140 |
 
-| Slot | Audio meaning | G | R | L | D |
-| --- | --- | --- | --- | --- | --- |
-| 1 | Minor-7 arpeggio tone | 110 Hz | 130.81 Hz | 164.81 Hz | 196 Hz |
-| 2 | Oscillator | Sine | Sawtooth | Square | Triangle |
-| 3 | Added harmonics | 0 | 1 | 2 | 3 |
-| 4 | Distortion / fuzz | Clean | Soft | Driven | Saturated |
+The resting ring is the frozen recipe: one base waveform, its axis and positive
+displacement, its sleeve radius, and its integer cycle count. The waveform
+deflection is always parallel to the Letter-axis, never radial.
 
-The waveform deflection is parallel to the Letter-axis, not radial. A complete
-reveal reads as four concentric sleeves repeated along each of the four
-pre-existing Letter-axes; the widened radius and axial spacing keep those
-families distinct. Inspection only changes the camera to a side-on view of the
-axis and animates the same waveform geometry.
+The active ring is the actual audio wave. It advances at the selected
+minor-seventh frequency and combines the oscillator with up to three harmonics
+using gains `[1, 0.68, 0.48, 0.34]`, then applies the same tanh distortion
+curve as the Web Audio voice. Its visual axial amplitude is intentionally
+compressed to keep fast square/saw waves legible without changing the sound.
 
-Name-derived colours are selected from deep blue, turquoise, yellow, and
-orange tonal families against a rich sky-blue field.
+A complete reveal reads as four spaced concentric sleeves along each of the
+four pre-existing Letter-axes. Inspection turns the camera perpendicular to
+the wheel axis and fills roughly 70% of the screen. The front becomes a clear
+2D projection; the rear half remains visible as a quieter depth cue rather than
+obscuring the front.
+
+GERALDs use a restrained pure-blue palette from near-black through blue to
+white on a rich sky-blue field (`#1B4D8F`).
 
 GERALD attention states:
 
 | State | Visual | Audio |
 | --- | --- | --- |
-| No attention | Entropy-muted colour; static waveform rotates slowly | Silent |
-| Mouseover | Saturated colour; waveform phase animates quietly | Quiet |
-| Click | Brief radial pluck, then idle spin | Medium |
-| Double-click / history click | Axis-facing camera view; waveform phase animates live | Maximum |
+| No attention | Entropy-muted recipe ring; slow silent spin | Silent |
+| Mouseover | Saturated colour; actual wave animates rapidly | Quiet |
+| Click | Brief amplified Vib-Ribbon-style shiver, then live wave | Medium |
+| Double-click / history click | Axis-facing inspection with rear-depth fade | Maximum |
+
+Hover remains latched while the pointer stays inside the ring's projected
+bounded area, preventing rapid live motion from escaping mouse focus. Shift-click
+adds or removes entities from a multi-selection; clicking blank space clears
+the active selection, and clicking the same selected entity again deselects it.
+There is no separate oscilloscope panel: the GERALD crown is the oscilloscope.
 
 ---
 
@@ -189,6 +198,14 @@ The application should support:
 This should complement, not replace, the empty possibility-space mode.
 
 ---
+
+## Deployment
+
+The canonical frontend source is the repository root (`index.html`,
+`style.css`, `src/`, and `fonts/`). The server-ready static copy lives in
+`ronald/www/` and is kept in sync before publication. The `ronald/` directory
+also contains the read-only NGINX container configuration used to serve that
+copy.
 
 ## Future settings
 

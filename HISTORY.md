@@ -394,3 +394,23 @@ Potential future developments:
 6. Generation explorer.
 7. Entropy system.
 8. Advanced colour models.
+
+
+# 2026-07-22 — GERALD live waveform and publication
+
+GERALDs now distinguish their two visual roles explicitly:
+
+- the resting crown is a frozen, parameter-derived recipe;
+- the attentive crown is the time-varying audio waveform, including harmonics
+  and distortion;
+- live axial amplitude is visually compressed so rapid square and saw waves do
+  not overwhelm the ring;
+- the interaction shiver remains as a short-lived pluck response.
+
+Inspection is axis-facing and uses a depth-aware fade: the front half reads as
+a 2D waveform projection while the rear half remains present as a quieter depth
+cue. Hover focus is latched to each ring's projected bounds, and blank-space
+clicks, repeat-click deselection, and shift-click multi-selection are supported.
+
+The server-ready copy in `ronald/www/` was synchronized and published through
+the NGINX deployment described in `ronald/README.md`.
