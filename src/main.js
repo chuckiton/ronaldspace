@@ -3,13 +3,13 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
-import { RonaldInput } from "./RonaldInput.js?v=20260722-gerald-live-wave";
-import { RonaldHistory } from "./RonaldHistory.js?v=20260722-gerald-live-wave";
-import { RonaldPath } from "./RonaldPath.js?v=20260722-gerald-live-wave";
-import { GordonObject } from "./GordonObject.js?v=20260721-gordon-pointed-bipyramid";
-import { GeraldSynth } from "./GeraldSynth.js?v=20260722-gerald-live-wave";
-import { initialiseRonaldSpace } from "./RonaldSpace.js?v=20260722-gerald-live-wave";
-import { getUniverse, UNIVERSES } from "./universes.js?v=20260722-gerald-live-wave";
+import { RonaldInput } from "./RonaldInput.js";
+import { RonaldHistory } from "./RonaldHistory.js";
+import { RonaldPath } from "./RonaldPath.js";
+import { GordonObject } from "./GordonObject.js";
+import { GeraldSynth } from "./GeraldSynth.js";
+import { initialiseRonaldSpace } from "./RonaldSpace.js";
+import { getUniverse, UNIVERSES } from "./universes.js";
 
 const scene = new THREE.Scene();
 // A stable studio key lets facets move through light and shadow when the

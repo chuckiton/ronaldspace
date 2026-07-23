@@ -3,8 +3,10 @@ import * as THREE from "three";
 import {
     END_OVERLAY_SEGMENTS,
     ENTROPY_STEP,
-    GERALD_DISTORTION_DRIVE,
-    GERALD_HARMONIC_GAINS,
+    GERALD_CHORUS_GAINS,
+    GERALD_FREQUENCIES,
+    GERALD_LOW_PASS_CUTOFF_CENTER,
+    GERALD_LOW_PASS_CUTOFF_DEPTH,
     PATH_GROWTH_PER_SECOND,
     PATH_RADIAL_SEGMENTS,
     PATH_SAMPLES,
@@ -14,11 +16,11 @@ import {
     WORD_CHARACTER_PROGRESS,
     WORD_SCREEN_OFFSET,
     WORD_SCREEN_WIDTH
-} from "./constants.js?v=20260722-gerald-live-wave";
+} from "./constants.js";
 import {
     geraldWaveValue,
     getUniverse
-} from "./universes.js?v=20260722-gerald-live-wave";
+} from "./universes.js";
 
 const WORD_LABEL_OPACITY = 0.94;
 const WORD_LABEL_FADE_SECONDS = 0.3;
@@ -39,25 +41,30 @@ const GERALD_IDLE_ROTATION_SPEED = 0.105;
 // recipe or temporal rate.
 const GERALD_LIVE_VISUAL_AMPLITUDE = 0.58;
 
-function distortedGeraldWave(value, distortion) {
-    const drive = GERALD_DISTORTION_DRIVE[distortion] ?? 0;
-    if (drive === 0) return value;
-    const amount = 1 + drive * 0.08;
-    return Math.tanh(value * amount) / Math.tanh(amount);
-}
-
-function liveGeraldWaveValue(crown, progress, temporalPhase) {
+function liveGeraldWaveValue(crown, progress, temporalPhase, filterPhase) {
     let value = 0;
     let totalGain = 0;
 
-    for (let harmonic = 0; harmonic <= crown.harmonics; harmonic += 1) {
-        const gain = GERALD_HARMONIC_GAINS[harmonic];
-        const phase = (progress * crown.cycles + temporalPhase) * (harmonic + 1);
-        value += geraldWaveValue(crown.waveform, phase) * gain;
+    const cutoff = GERALD_LOW_PASS_CUTOFF_CENTER
+        + Math.sin(filterPhase * Math.PI * 2) * GERALD_LOW_PASS_CUTOFF_DEPTH;
+    for (let note = 0; note <= crown.chorusNotes; note += 1) {
+        const gain = GERALD_CHORUS_GAINS[note];
+        const arpeggioStep = crown.noteIndex + note;
+        const noteIndex = arpeggioStep % GERALD_FREQUENCIES.length;
+        const octave = Math.floor(arpeggioStep / GERALD_FREQUENCIES.length);
+        const noteFrequency = GERALD_FREQUENCIES[noteIndex] * (2 ** octave);
+        const frequencyRatio = noteFrequency / crown.frequency;
+        const filterGain = 1 / Math.sqrt(
+            1 + (noteFrequency / Math.max(80, cutoff)) ** 4
+        );
+        // Keep the spatial phase integral so the active crown remains a
+        // complete loop while its note voices drift at their real rates.
+        const phase = progress * crown.cycles + temporalPhase * frequencyRatio;
+        value += geraldWaveValue(crown.waveform, phase) * gain * filterGain;
         totalGain += gain;
     }
 
-    return distortedGeraldWave(value / totalGain, crown.distortion);
+    return value / totalGain;
 }
 
 const MARTIN_TRAIL_VERTEX_SHADER = `
@@ -85,44 +92,6 @@ const MARTIN_TRAIL_FRAGMENT_SHADER = `
     }
 `;
 
-const GERALD_INSPECTOR_VERTEX_SHADER = `
-    attribute vec3 color;
-    uniform vec3 uFadeCentre;
-    varying vec3 vGeraldColour;
-    varying float vGeraldDepth;
-
-    void main() {
-        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-        vGeraldColour = color;
-        vGeraldDepth = dot(
-            worldPosition.xyz - uFadeCentre,
-            normalize(cameraPosition - uFadeCentre)
-        );
-        gl_Position = projectionMatrix * viewMatrix * worldPosition;
-    }
-`;
-
-const GERALD_INSPECTOR_FRAGMENT_SHADER = `
-    uniform float uFadeEnabled;
-    uniform float uFadeRadius;
-    varying vec3 vGeraldColour;
-    varying float vGeraldDepth;
-
-    void main() {
-        float backFade = smoothstep(
-            -uFadeRadius,
-            -uFadeRadius * 0.12,
-            vGeraldDepth
-        );
-        // Keep the rear projection present as depth information, but quiet
-        // enough that it cannot compete with the front 2D reading.
-        float opacity = 0.22 + 0.78 * backFade;
-        opacity = mix(1.0, opacity, uFadeEnabled) * 0.94;
-        if (opacity < 0.004) discard;
-        gl_FragColor = vec4(vGeraldColour, opacity);
-    }
-`;
-
 function createMartinOrbitMaterial(opacity = 1) {
     return new THREE.ShaderMaterial({
         vertexShader: MARTIN_TRAIL_VERTEX_SHADER,
@@ -133,22 +102,6 @@ function createMartinOrbitMaterial(opacity = 1) {
         transparent: true,
         depthWrite: false,
         depthTest: true,
-        side: THREE.DoubleSide
-    });
-}
-
-function createGeraldInspectorMaterial() {
-    return new THREE.ShaderMaterial({
-        vertexShader: GERALD_INSPECTOR_VERTEX_SHADER,
-        fragmentShader: GERALD_INSPECTOR_FRAGMENT_SHADER,
-        uniforms: {
-            uFadeEnabled: { value: 0 },
-            uFadeCentre: { value: new THREE.Vector3() },
-            uFadeRadius: { value: 1 }
-        },
-        vertexColors: true,
-        transparent: true,
-        depthWrite: false,
         side: THREE.DoubleSide
     });
 }
@@ -264,6 +217,7 @@ export class RonaldPath {
             ? this.definition.crownForName(name)
             : null;
         this.geraldAudioPhase = 0;
+        this.geraldFilterPhase = 0;
         this.geraldShiver = 0;
         this.geraldShiverPhase = 0;
         this.geraldShiverSide = this.isGerald
@@ -306,7 +260,9 @@ export class RonaldPath {
             (PATH_SAMPLES + 1) * (PATH_RADIAL_SEGMENTS + 1) * 3
         );
         const selectedColours = new Float32Array(colours.length);
-        const selectedColour = identityColour.clone().offsetHSL(0, 0.2, -0.03);
+        const selectedColour = this.isGerald
+            ? identityColour.clone().offsetHSL(0, 0.16, -0.01)
+            : identityColour.clone().offsetHSL(0, 0.2, -0.03);
 
         for (let ring = 0; ring <= PATH_SAMPLES; ring += 1) {
             const progress = ring / PATH_SAMPLES;
@@ -372,14 +328,16 @@ export class RonaldPath {
         this.geraldBasePositions = this.isGerald
             ? this.selectedGeometry.getAttribute("position").array.slice()
             : null;
-        this.selectedMaterial = this.isGerald
-            ? createGeraldInspectorMaterial()
-            : new THREE.MeshBasicMaterial({
-                vertexColors: true,
-                transparent: true,
-                opacity: 0.94,
-                side: THREE.DoubleSide
-            });
+        // Keep ordinary selection on the stable transparent mesh material.
+        // The axis-local inspection filter is only attached while examining a
+        // GERALD, so it cannot suppress the normal selected state.
+        this.selectedMaterial = new THREE.MeshBasicMaterial({
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.94,
+            depthWrite: false,
+            side: THREE.DoubleSide
+        });
         this.selectedPath = new THREE.Mesh(this.selectedGeometry, this.selectedMaterial);
         this.selectedPath.renderOrder = 2;
         this.selectedPath.visible = false;
@@ -481,7 +439,9 @@ export class RonaldPath {
             });
         }
 
-        const selectedColour = this.identityColour.clone().offsetHSL(0, 0.2, -0.03);
+        const selectedColour = this.isGerald
+            ? this.identityColour.clone().offsetHSL(0, 0.16, -0.01)
+            : this.identityColour.clone().offsetHSL(0, 0.2, -0.03);
         const selectedAttribute = this.selectedGeometry.getAttribute("color");
 
         for (let index = 0; index < selectedAttribute.count; index += 1) {
@@ -563,6 +523,7 @@ export class RonaldPath {
         if (selected && !this.selected && this.isGerald) {
             this.triggerShiver(0.105);
             this.geraldAudioPhase = 0;
+            this.geraldFilterPhase = 0;
         }
         this.selected = selected;
         this.updateLaneOffset();
@@ -586,15 +547,6 @@ export class RonaldPath {
             this.selectedPath.quaternion.copy(this.path.quaternion);
             this.selectedPath.scale.copy(this.path.scale);
             this.selectedPath.visible = true;
-            if (this.selectedMaterial.uniforms?.uFadeEnabled) {
-                this.selectedMaterial.uniforms.uFadeEnabled.value = 1;
-                this.selectedMaterial.uniforms.uFadeCentre.value.copy(
-                    this.getFocusTarget()
-                );
-                this.selectedMaterial.uniforms.uFadeRadius.value = (
-                    this.geraldCrown.radius + SELECTED_PATH_TUBE_RADIUS
-                );
-            }
             if (this.word) this.word.label.visible = false;
             return;
         }
@@ -602,9 +554,6 @@ export class RonaldPath {
         this.endPath.visible = true;
         this.selectedPath.quaternion.copy(this.path.quaternion);
         this.selectedPath.scale.copy(this.path.scale);
-        if (this.selectedMaterial.uniforms?.uFadeEnabled) {
-            this.selectedMaterial.uniforms.uFadeEnabled.value = 0;
-        }
         this.updateHighlightVisibility();
     }
 
@@ -614,6 +563,7 @@ export class RonaldPath {
             this.geraldShiver = Math.max(this.geraldShiver, 0.022);
             this.geraldShiverPhase = 0;
             this.geraldAudioPhase = 0;
+            this.geraldFilterPhase = 0;
         }
         if (!hovered && !this.selected && this.isGerald && !this.geraldInspecting) {
             this.selectedPath.quaternion.copy(this.path.quaternion);
@@ -691,6 +641,10 @@ export class RonaldPath {
                 this.geraldAudioPhase + delta * this.geraldCrown.frequency,
                 1
             );
+            this.geraldFilterPhase = THREE.MathUtils.euclideanModulo(
+                this.geraldFilterPhase + delta * this.geraldCrown.sweepRate,
+                1
+            );
         }
         this.geraldShiver *= Math.exp(-delta * 10.5);
         this.geraldShiverPhase += delta * 48;
@@ -718,7 +672,8 @@ export class RonaldPath {
                 const actualWave = liveGeraldWaveValue(
                     this.geraldCrown,
                     progress,
-                    this.geraldAudioPhase
+                    this.geraldAudioPhase,
+                    this.geraldFilterPhase
                 );
                 // Move the frozen recipe to the actual audio wave, rather
                 // than layering a second waveform on top of it.

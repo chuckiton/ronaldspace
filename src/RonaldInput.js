@@ -1,5 +1,5 @@
-import { GODNEY_NAME } from "./constants.js?v=20260722-gerald-live-wave";
-import { getUniverse } from "./universes.js?v=20260722-gerald-live-wave";
+import { GODNEY_NAME } from "./constants.js";
+import { getUniverse } from "./universes.js";
 
 const ENTRY_MODES = ["random", "enter", "build"];
 const ENTRY_MODE_LABELS = {
