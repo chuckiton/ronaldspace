@@ -5,8 +5,8 @@ import {
     COORDINATE_SCALE,
     WORD_SCREEN_OFFSET,
     WORD_SCREEN_WIDTH
-} from "./constants.js?v=20260722-gerald-live-wave";
-import { getUniverse } from "./universes.js?v=20260722-gerald-live-wave";
+} from "./constants.js";
+import { getUniverse } from "./universes.js";
 
 const GROWTH_PER_SECOND = 1.45;
 const INACTIVE_OPACITY = 0.07;

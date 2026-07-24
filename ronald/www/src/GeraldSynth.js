@@ -1,26 +1,16 @@
 import {
-    GERALD_DISTORTION_DRIVE,
+    GERALD_CHORUS_GAINS,
     GERALD_FREQUENCIES,
-    GERALD_HARMONIC_GAINS
-} from "./constants.js?v=20260722-gerald-live-wave";
+    GERALD_LOW_PASS_CUTOFF_CENTER,
+    GERALD_LOW_PASS_CUTOFF_DEPTH,
+    GERALD_LOW_PASS_SWEEP_RATES
+} from "./constants.js";
 
 const LETTER_INDEX = { G: 0, R: 1, L: 2, D: 3 };
 const WAVEFORMS = ["sine", "sawtooth", "square", "triangle"];
-const SCRUTINY_GAIN = [0, 0.018, 0.052, 0.105];
-
-function distortionCurve(amount) {
-    const samples = 2048;
-    const curve = new Float32Array(samples);
-    const drive = GERALD_DISTORTION_DRIVE[amount];
-
-    for (let index = 0; index < samples; index += 1) {
-        const x = index * 2 / (samples - 1) - 1;
-        curve[index] = drive === 0
-            ? x
-            : Math.tanh(x * (1 + drive * 0.08)) / Math.tanh(1 + drive * 0.08);
-    }
-    return curve;
-}
+// Keep hover quiet, but make click and inspection reliably audible across
+// laptop speakers and browser output levels.
+const SCRUTINY_GAIN = [0, 0.065, 0.2, 0.38];
 
 export class GeraldSynth {
     constructor() {
@@ -34,10 +24,11 @@ export class GeraldSynth {
         const indices = [name[0], name[2], name[4], name[5]]
             .map(letter => LETTER_INDEX[letter]);
         return {
-            frequency: GERALD_FREQUENCIES[indices[0]],
-            waveform: WAVEFORMS[indices[1]],
-            harmonics: indices[2],
-            distortion: indices[3]
+            waveform: WAVEFORMS[indices[0]],
+            noteIndex: indices[1],
+            frequency: GERALD_FREQUENCIES[indices[1]],
+            chorusNotes: 3 - indices[2],
+            sweepRate: GERALD_LOW_PASS_SWEEP_RATES[indices[3]]
         };
     }
 
@@ -70,18 +61,28 @@ export class GeraldSynth {
         const voice = {
             name,
             oscillators: [],
-            harmonicGains: [],
-            distortion: audio.createWaveShaper()
+            noteGains: [],
+            filter: audio.createBiquadFilter(),
+            filterLfo: audio.createOscillator(),
+            filterLfoDepth: audio.createGain()
         };
-        voice.distortion.oversample = "4x";
+        voice.filter.type = "lowpass";
+        voice.filter.Q.value = 0.7;
+        voice.filter.frequency.value = GERALD_LOW_PASS_CUTOFF_CENTER;
+        voice.filterLfo.type = "sine";
+        voice.filterLfoDepth.gain.value = GERALD_LOW_PASS_CUTOFF_DEPTH;
+        voice.filterLfo.connect(voice.filterLfoDepth).connect(voice.filter.frequency);
+        voice.filterLfo.start();
 
         for (let index = 0; index < 4; index += 1) {
             const oscillator = audio.createOscillator();
             const gain = audio.createGain();
-            oscillator.connect(gain).connect(voice.distortion).connect(this.mixGain);
+            oscillator.connect(gain)
+                .connect(voice.filter)
+                .connect(this.mixGain);
             oscillator.start();
             voice.oscillators.push(oscillator);
-            voice.harmonicGains.push(gain);
+            voice.noteGains.push(gain);
         }
         this.updateVoice(voice, name);
         return voice;
@@ -95,20 +96,23 @@ export class GeraldSynth {
 
         voice.oscillators.forEach((oscillator, index) => {
             oscillator.type = parameters.waveform;
+            const arpeggioStep = parameters.noteIndex + index;
+            const noteIndex = arpeggioStep % GERALD_FREQUENCIES.length;
+            const octave = Math.floor(arpeggioStep / GERALD_FREQUENCIES.length);
             oscillator.frequency.setTargetAtTime(
-                parameters.frequency * (index + 1),
+                GERALD_FREQUENCIES[noteIndex] * (2 ** octave),
                 now,
                 0.028
             );
-            voice.harmonicGains[index].gain.setTargetAtTime(
-                index <= parameters.harmonics
-                    ? GERALD_HARMONIC_GAINS[index] * voiceLevel
+            voice.noteGains[index].gain.setTargetAtTime(
+                index <= parameters.chorusNotes
+                    ? GERALD_CHORUS_GAINS[index] * voiceLevel
                     : 0,
                 now,
                 0.025
             );
         });
-        voice.distortion.curve = distortionCurve(parameters.distortion);
+        voice.filterLfo.frequency.setTargetAtTime(parameters.sweepRate, now, 0.04);
     }
 
     syncVoices() {
@@ -116,6 +120,7 @@ export class GeraldSynth {
         this.voices.forEach((voice, name) => {
             if (wanted.has(name)) return;
             voice.oscillators.forEach(oscillator => oscillator.stop());
+            voice.filterLfo.stop();
             this.voices.delete(name);
         });
         this.names.forEach(name => {
@@ -129,15 +134,25 @@ export class GeraldSynth {
         if (!enabled && this.audioContext) {
             this.voices.forEach(voice => {
                 voice.oscillators.forEach(oscillator => oscillator.stop());
+                voice.filterLfo.stop();
             });
             await this.audioContext.close();
             this.audioContext = null;
             this.voices.clear();
             return;
         }
-        if (!enabled || this.audioContext) return;
+        if (!enabled) return;
+        if (this.audioContext) {
+            if (this.audioContext.state === "suspended") {
+                await this.audioContext.resume();
+            }
+            return;
+        }
 
-        this.audioContext = new AudioContext();
+        const AudioContextClass = globalThis.AudioContext ?? globalThis.webkitAudioContext;
+        if (!AudioContextClass) return;
+
+        this.audioContext = new AudioContextClass();
         const audio = this.audioContext;
         this.mixGain = audio.createGain();
         this.outputGain = audio.createGain();
@@ -145,5 +160,8 @@ export class GeraldSynth {
         this.outputGain.gain.value = SCRUTINY_GAIN[this.scrutiny];
         this.mixGain.connect(this.outputGain).connect(audio.destination);
         this.syncVoices();
+        if (audio.state === "suspended") {
+            await audio.resume();
+        }
     }
 }

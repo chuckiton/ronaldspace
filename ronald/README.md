@@ -2,6 +2,16 @@
 
 This folder is a self-contained static deployment. A non-root NGINX container serves `www/` read-only over HTTP; Nginx Proxy Manager (NPM) should provide the public TLS endpoint.
 
+## Prepare the static copy
+
+The repository root is canonical; do not edit `www/` directly. From the
+repository root, synchronize and verify the deployment copy:
+
+```sh
+./scripts/sync-deployment.sh
+./scripts/check-deployment.sh
+```
+
 ## Deploy
 
 1. Copy this `ronald/` folder to `/mnt/docks/stacks/ronald` on the server.

@@ -7,6 +7,7 @@ import {
     GERALD_FREQUENCIES,
     GERALD_LOW_PASS_CUTOFF_CENTER,
     GERALD_LOW_PASS_CUTOFF_DEPTH,
+    GERALD_THEME,
     PATH_GROWTH_PER_SECOND,
     PATH_RADIAL_SEGMENTS,
     PATH_SAMPLES,
@@ -92,6 +93,49 @@ const MARTIN_TRAIL_FRAGMENT_SHADER = `
     }
 `;
 
+const GERALD_INSPECTION_WAVE_VERTEX_SHADER = `
+    attribute vec3 color;
+    uniform vec3 uFadeCentre;
+    uniform vec3 uViewDirection;
+    varying vec3 vGeraldColour;
+    varying float vGeraldDepth;
+
+    void main() {
+        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+        vGeraldColour = color;
+        vGeraldDepth = dot(worldPosition.xyz - uFadeCentre, uViewDirection);
+        gl_Position = projectionMatrix * viewMatrix * worldPosition;
+    }
+`;
+
+const GERALD_INSPECTION_WAVE_FRAGMENT_SHADER = `
+    uniform vec3 uFadeColour;
+    uniform float uFadeEnabled;
+    uniform float uFadeRadius;
+    uniform float uGlobalOpacity;
+    varying vec3 vGeraldColour;
+    varying float vGeraldDepth;
+
+    void main() {
+        // The rotational axis is perpendicular to the inspection view. Colour
+        // only the rear half along that view-depth direction; the front and
+        // the lateral sides retain their full colour and opacity.
+        float rearProgress = clamp(
+            (vGeraldDepth + uFadeRadius) / uFadeRadius,
+            0.0,
+            1.0
+        );
+        // Keep opacity stable and colour the distant segments toward the
+        // GERALD background. This avoids transparent-sort artefacts while
+        // retaining a quiet, readable trace of the rear structure.
+        float rearBlend = (1.0 - rearProgress) * uFadeEnabled * 0.78;
+        vec3 colour = mix(vGeraldColour, uFadeColour, rearBlend);
+        float opacity = uGlobalOpacity;
+        if (opacity < 0.001) discard;
+        gl_FragColor = vec4(colour, opacity);
+    }
+`;
+
 function createMartinOrbitMaterial(opacity = 1) {
     return new THREE.ShaderMaterial({
         vertexShader: MARTIN_TRAIL_VERTEX_SHADER,
@@ -102,6 +146,29 @@ function createMartinOrbitMaterial(opacity = 1) {
         transparent: true,
         depthWrite: false,
         depthTest: true,
+        side: THREE.DoubleSide
+    });
+}
+
+function createGeraldInspectionWaveMaterial() {
+    return new THREE.ShaderMaterial({
+        vertexShader: GERALD_INSPECTION_WAVE_VERTEX_SHADER,
+        fragmentShader: GERALD_INSPECTION_WAVE_FRAGMENT_SHADER,
+        uniforms: {
+            uFadeColour: {
+                value: new THREE.Color(GERALD_THEME.background)
+            },
+            uFadeEnabled: { value: 0 },
+            uFadeCentre: { value: new THREE.Vector3() },
+            uFadeRadius: { value: 1 },
+            uViewDirection: { value: new THREE.Vector3(0, 0, 1) },
+            uGlobalOpacity: { value: 0.94 }
+        },
+        // The shader declares the colour attribute explicitly so Three.js does
+        // not inject a duplicate declaration for ShaderMaterial.
+        vertexColors: false,
+        transparent: true,
+        depthWrite: false,
         side: THREE.DoubleSide
     });
 }
@@ -220,6 +287,7 @@ export class RonaldPath {
         this.geraldFilterPhase = 0;
         this.geraldShiver = 0;
         this.geraldShiverPhase = 0;
+        this.geraldGeometryIsLive = false;
         this.geraldShiverSide = this.isGerald
             ? new THREE.Vector3().crossVectors(
                 this.geraldCrown.axis,
@@ -328,16 +396,17 @@ export class RonaldPath {
         this.geraldBasePositions = this.isGerald
             ? this.selectedGeometry.getAttribute("position").array.slice()
             : null;
-        // Keep ordinary selection on the stable transparent mesh material.
-        // The axis-local inspection filter is only attached while examining a
-        // GERALD, so it cannot suppress the normal selected state.
-        this.selectedMaterial = new THREE.MeshBasicMaterial({
-            vertexColors: true,
-            transparent: true,
-            opacity: 0.94,
-            depthWrite: false,
-            side: THREE.DoubleSide
-        });
+        // GERALD inspection fades by view depth; other universes retain the
+        // ordinary transparent selection material.
+        this.selectedMaterial = this.isGerald
+            ? createGeraldInspectionWaveMaterial()
+            : new THREE.MeshBasicMaterial({
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.94,
+                depthWrite: false,
+                side: THREE.DoubleSide
+            });
         this.selectedPath = new THREE.Mesh(this.selectedGeometry, this.selectedMaterial);
         this.selectedPath.renderOrder = 2;
         this.selectedPath.visible = false;
@@ -362,6 +431,11 @@ export class RonaldPath {
         this.theme = theme;
         this.identityColour.copy(this.definition.colourForName(this.name, theme));
         this.agedColour.set(theme.agedPath);
+        if (this.isGerald) {
+            this.selectedMaterial.uniforms.uFadeColour.value.copy(
+                new THREE.Color(GERALD_THEME.background)
+            );
+        }
         this.updateColours();
     }
 
@@ -482,6 +556,9 @@ export class RonaldPath {
 
         if (this.isGerald) {
             this.updateGeraldCrown(delta);
+            if (this.geraldInspecting) {
+                this.updateGeraldInspectionDepth(camera);
+            }
         }
 
         if (this.visibleSegments < PATH_SAMPLES) {
@@ -547,6 +624,7 @@ export class RonaldPath {
             this.selectedPath.quaternion.copy(this.path.quaternion);
             this.selectedPath.scale.copy(this.path.scale);
             this.selectedPath.visible = true;
+            this.selectedMaterial.uniforms.uFadeEnabled.value = 1;
             if (this.word) this.word.label.visible = false;
             return;
         }
@@ -554,6 +632,7 @@ export class RonaldPath {
         this.endPath.visible = true;
         this.selectedPath.quaternion.copy(this.path.quaternion);
         this.selectedPath.scale.copy(this.path.scale);
+        this.selectedMaterial.uniforms.uFadeEnabled.value = 0;
         this.updateHighlightVisibility();
     }
 
@@ -621,9 +700,37 @@ export class RonaldPath {
         return this.geraldCrown?.axis.clone() ?? null;
     }
 
-    getInspectionDistance() {
-        // Side-on inspection targets roughly 70% of the viewport width.
-        return this.isGerald ? this.geraldCrown.radius * 2.05 : null;
+    getInspectionDistance(camera = null) {
+        if (!this.isGerald) return null;
+
+        if (!camera) {
+            return (this.geraldCrown.radius + SELECTED_PATH_TUBE_RADIUS) * 3.8;
+        }
+
+        // Fit the inspected crown to roughly 70% of the viewport width. The
+        // horizontal field of view changes with the viewport aspect ratio, so
+        // a fixed radius multiplier makes square windows dramatically too
+        // close and wide windows too distant.
+        const horizontalFov = 2 * Math.atan(
+            Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * camera.aspect
+        );
+        const crownRadius = this.geraldCrown.radius + SELECTED_PATH_TUBE_RADIUS;
+        return crownRadius / (Math.tan(horizontalFov / 2) * 0.7);
+    }
+
+    updateGeraldInspectionDepth(camera) {
+        if (!this.isGerald) return;
+
+        const centre = this.selectedPath.localToWorld(
+            this.geraldCrown.centre.clone()
+        );
+
+        const uniforms = this.selectedMaterial.uniforms;
+        uniforms.uFadeCentre.value.copy(centre);
+        uniforms.uViewDirection.value.copy(
+            camera.position.clone().sub(centre).normalize()
+        );
+        uniforms.uFadeRadius.value = this.geraldCrown.radius;
     }
 
     updateGeraldCrown(delta) {
@@ -648,15 +755,26 @@ export class RonaldPath {
         }
         this.geraldShiver *= Math.exp(-delta * 10.5);
         this.geraldShiverPhase += delta * 48;
-        this.updateGeraldShiverGeometry();
+        const live = this.geraldInspecting || this.hovered || this.selected;
+        const shivering = this.geraldShiver >= 0.00001;
+
+        // Idle crowns rotate as complete meshes; their vertex data does not
+        // change. Avoid uploading the same 2,169 vertices every frame for
+        // every unveiled GERALD. One final update restores the frozen recipe
+        // after attention ends.
+        if (live || shivering || this.geraldGeometryIsLive) {
+            this.updateGeraldShiverGeometry(live);
+        }
+        this.geraldGeometryIsLive = live || shivering;
     }
 
-    updateGeraldShiverGeometry() {
+    updateGeraldShiverGeometry(live = (
+        this.geraldInspecting || this.hovered || this.selected
+    )) {
         if (!this.geraldBasePositions) return;
         const positions = this.selectedGeometry.getAttribute("position");
         const amplitude = this.geraldShiver;
         const phase = this.geraldShiverPhase;
-        const live = this.geraldInspecting || this.hovered || this.selected;
         const audioAmplitude = GERALD_LIVE_VISUAL_AMPLITUDE;
 
         for (let vertex = 0; vertex < positions.count; vertex += 1) {
@@ -1066,7 +1184,6 @@ export class RonaldPath {
         this.endMaterial.dispose();
         this.selectedGeometry.dispose();
         this.selectedMaterial.dispose();
-
         if (this.word) {
             this.scene.remove(this.word.label);
             this.word.label.geometry.dispose();

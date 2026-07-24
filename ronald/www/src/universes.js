@@ -6,6 +6,7 @@ import {
     GORDON_PATTERN,
     GORDON_VECTORS,
     GORDON_THEME,
+    GERALD_LOW_PASS_SWEEP_RATES,
     GERALD_FREQUENCIES,
     GERALD_NAME,
     GERALD_PATTERN,
@@ -23,7 +24,7 @@ import {
     RONALD_TEMPLATE,
     THEMES,
     VECTORS
-} from "./constants.js?v=20260722-gerald-live-wave";
+} from "./constants.js";
 
 const RODNEY_TEMPLATE = ["RNDY", "O", "RNDY", "RNDY", "E", "RNDY"];
 const RODNEY_VARIATION_PATTERN = /^[RNDY]O[RNDY][RNDY]E[RNDY]$/;
@@ -226,15 +227,17 @@ export function geraldWaveValue(waveform, phase) {
 function geraldCrownForName(name) {
     const parameters = [name[0], name[2], name[4], name[5]]
         .map(letter => "GRLD".indexOf(letter));
-    const [axisIndex, positionIndex, radiusIndex, cycleIndex] = parameters;
+    const [axisIndex, noteIndex, radiusIndex, sweepIndex] = parameters;
     const axis = GERALD_AXES[axisIndex].clone();
-    const waveform = positionIndex;
+    const waveform = axisIndex;
     const axialPositions = [2.4, 7.2, 12, 16.8];
-    const displacement = axialPositions[positionIndex];
+    const displacement = axialPositions[noteIndex];
     // These are the four visible concentric sleeves for each Letter-axis.
     const radius = [1.5, 4.1, 6.7, 9.3][radiusIndex];
-    const cycles = [3, 4, 5, 6][cycleIndex];
-    const angularSignature = [0, Math.PI / 8, Math.PI / 4, (3 * Math.PI) / 8][cycleIndex];
+    // Integer lobe counts keep every recipe a complete loop while making the
+    // final letter visibly distinct even when the first three slots overlap.
+    const cycles = [3, 5, 7, 9][sweepIndex];
+    const angularSignature = [0, Math.PI / 6, Math.PI / 3, Math.PI / 2][sweepIndex];
     const centre = axis.clone().multiplyScalar(displacement);
     const reference = Math.abs(axis.y) < 0.88
         ? new THREE.Vector3(0, 1, 0)
@@ -246,8 +249,8 @@ function geraldCrownForName(name) {
     const amplitude = 1.26;
 
     // The resting crown is the Gerald's frozen recipe: one readable base
-    // waveform, with its cycle/radius/axis choices providing the identity.
-    // The time-varying harmonic audio wave is applied only when attentive.
+    // waveform, with its lobe/radius/axis choices providing the identity.
+    // The time-varying chorus wave is applied only when attentive.
     for (let step = 0; step < samples; step += 1) {
         const progress = step / samples;
         const angle = progress * Math.PI * 2 + angularSignature;
@@ -270,9 +273,10 @@ function geraldCrownForName(name) {
         radius,
         cycles,
         waveform,
-        frequency: GERALD_FREQUENCIES[axisIndex],
-        harmonics: radiusIndex,
-        distortion: cycleIndex,
+        noteIndex,
+        frequency: GERALD_FREQUENCIES[noteIndex],
+        chorusNotes: 3 - radiusIndex,
+        sweepRate: GERALD_LOW_PASS_SWEEP_RATES[sweepIndex],
         points
     };
 }

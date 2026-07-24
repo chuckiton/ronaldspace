@@ -351,7 +351,7 @@ function focusEntity(ronald, { activateOrbit = false } = {}) {
     const viewingDirection = inspectionViewDirection ?? camera.position.clone()
         .sub(controls.target)
         .normalize();
-    const distance = ronald.getInspectionDistance?.()
+    const distance = ronald.getInspectionDistance?.(camera)
         ?? Math.max(8, ronald.getFocusRadius() * 3);
     const position = target.clone().addScaledVector(viewingDirection, distance);
     transitionCamera(position, target, 0.38);

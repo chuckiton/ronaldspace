@@ -205,7 +205,8 @@ The canonical frontend source is the repository root (`index.html`,
 `style.css`, `src/`, and `fonts/`). The server-ready static copy lives in
 `ronald/www/` and is kept in sync before publication. The `ronald/` directory
 also contains the read-only NGINX container configuration used to serve that
-copy.
+copy. Run `./scripts/sync-deployment.sh` to refresh the copy and
+`./scripts/check-deployment.sh` to detect drift.
 
 ## Future settings
 

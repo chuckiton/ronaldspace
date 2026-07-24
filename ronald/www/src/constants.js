@@ -56,11 +56,15 @@ export const GERALD_VECTORS = {
 };
 
 // Shared by the Web Audio voices and the live waveform renderer. The four
-// name-controlled indices map to pitch, oscillator shape, harmonic count,
-// and distortion drive respectively.
-export const GERALD_FREQUENCIES = [73.42, 110, 164.81, 246.94];
-export const GERALD_HARMONIC_GAINS = [1, 0.68, 0.48, 0.34];
-export const GERALD_DISTORTION_DRIVE = [0, 18, 58, 140];
+// name-controlled indices map to oscillator shape, note, chorus-note count,
+// and low-pass sweep rate respectively.
+// A2, C3, E3 and G3: a true minor-seventh arpeggio with an ascending octave
+// continuation for chorus notes beyond the fourth slot.
+export const GERALD_FREQUENCIES = [110, 130.81, 164.81, 196];
+export const GERALD_CHORUS_GAINS = [1, 0.68, 0.48, 0.34];
+export const GERALD_LOW_PASS_SWEEP_RATES = [0.35, 0.8, 1.8, 3.6];
+export const GERALD_LOW_PASS_CUTOFF_CENTER = 3200;
+export const GERALD_LOW_PASS_CUTOFF_DEPTH = 2600;
 
 export const RONALD_PATTERN = /^[RNLD]O[RNLD]A[RNLD][RNLD]$/;
 export const RONALD_TEMPLATE = ["RNLD", "O", "RNLD", "A", "RNLD", "RNLD"];
