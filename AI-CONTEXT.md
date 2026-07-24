@@ -72,19 +72,22 @@ wave animation; click brief pluck at medium volume; and double-click/history
 click axis-facing examination at maximum volume.
 
 - Main files: `src/main.js`, `src/RonaldInput.js`, `src/RonaldPath.js`, `src/RonaldSpace.js`, `src/RonaldHistory.js`, and `src/constants.js`.
-- Keep root `index.html`, `style.css`, `src/`, and `fonts/` in sync with `ronald/www/` after every frontend change; `ronald/www/` is the server-ready copy.
+- The root `index.html`, `style.css`, `src/`, and `fonts/` are canonical; there
+  is no committed deployment copy. Use `./scripts/deploy.sh` to populate the
+  server's existing `www/` directory.
 - Bump the cache query in `index.html` and the `RonaldInput.js` query in `src/main.js` whenever client assets need forced refresh.
 - The carousel previously skipped Build because focusing it auto-scrolled `#ronald-entry-stage` while CSS also translated the track. Do not remove `focusWithinEntryStage()`, `preventScroll`, `scrollLeft = 0`, or `overflow: clip` without retesting all mode transitions.
 
 ## Deployment
 
-- Server layout: `/mnt/docks/stacks/ronald/` with `www/`, `docker-compose.yaml`, and `nginx.conf`.
-- `ronald/docker-compose.yaml` runs `nginxinc/nginx-unprivileged:1.28-alpine` on host port **8888** (container port 8080). Nginx Proxy Manager terminates public TLS and proxies HTTP to port 8888.
+- Server layout is selected locally through `RONALD_DEPLOY_ROOT`, containing
+  `www/`, `docker-compose.yaml`, and `nginx.conf`.
+- `deploy/docker-compose.yaml` runs `nginxinc/nginx-unprivileged:1.28-alpine` on host port **8888** (container port 8080). Nginx Proxy Manager terminates public TLS and proxies HTTP to port 8888.
 - The site is bind-mounted read-only; the container is non-root, read-only, capability-dropped, and resource-limited where the host supports it.
 - Deploy from the current workspace with:
 
   ```sh
-  rsync -av --progress ./ronald/ charlie@aurora.local:/mnt/docks/stacks/ronald/ && ssh charlie@aurora.local 'cd /mnt/docks/stacks/ronald && docker compose restart web'
+  ./scripts/deploy.sh
   ```
 
   The restart is optional for static bind-mounted files, but is a reliable final step. Keep port 8888 restricted to the proxy/Docker network.

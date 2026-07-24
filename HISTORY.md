@@ -413,4 +413,13 @@ cue. Hover focus is latched to each ring's projected bounds, and blank-space
 clicks, repeat-click deselection, and shift-click multi-selection are supported.
 
 The server-ready copy in `ronald/www/` was synchronized and published through
-the NGINX deployment described in `ronald/README.md`.
+the then-current NGINX deployment workflow.
+
+
+# 2026-07-24 — Canonical-source deployment
+
+The committed `ronald/www/` mirror was removed because it duplicated the
+entire frontend and could drift from the canonical source. Container
+configuration now lives in `deploy/`, while `scripts/deploy.sh` copies the root
+frontend directly into the existing server-side `www/` directory. The server
+layout and NGINX mount remain unchanged.

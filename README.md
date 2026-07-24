@@ -44,24 +44,26 @@ testing.
 | `src/RonaldSpace.js` | Shared possibility nodes, axes, and labels |
 | `src/RonaldHistory.js` | Discovered-entity list |
 | `src/constants.js` | Shared geometry, naming, theme, and audio constants |
-| `ronald/` | NGINX container and generated static deployment copy |
+| `deploy/` | NGINX and Docker Compose configuration |
 
-## Deployment copy
+## Deployment
 
-The repository root is canonical. Before publishing, synchronize it into
-`ronald/www`:
-
-```sh
-./scripts/sync-deployment.sh
-```
-
-CI or a pre-deploy check can verify that the copy has not drifted:
+The repository contains no duplicate deployment copy. Deploy the canonical
+frontend into the existing server layout with:
 
 ```sh
-./scripts/check-deployment.sh
+./scripts/deploy.sh
 ```
 
-See `ronald/README.md` for the container and reverse-proxy procedure.
+Preview the exact transfer without changing the server:
+
+```sh
+./scripts/deploy.sh --dry-run
+```
+
+Set `RONALD_DEPLOY_HOST` and `RONALD_DEPLOY_ROOT` locally before deploying.
+See `deploy/README.md` for Fish setup, server layout, and the reverse-proxy
+procedure.
 
 ## Performance notes
 
