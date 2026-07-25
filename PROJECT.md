@@ -1,240 +1,146 @@
-# Ronald Explorer
+# Ronald Explorer — product specification
 
 ## Concept
 
-Ronald Explorer is an interactive 3D visualisation of a constrained naming space.
+Ronald Explorer is an interactive mathematical artwork in which constrained
+six-letter names become spatial entities. The tetrahedral possibility space is
+the common setting; each universe interprets four variable letters as a path,
+orbit, crystal recipe, or waveform voice.
 
-A valid Ronald is a six-letter name following the Ronald structure. The name is converted into a sequence of four consonant coordinates:
+The implemented visual language is minimal and non-game-like: ProFont,
+restrained colour, no glow, and subtle nodes and axes. Each universe has its
+own field colour and identity palette.
 
-R O N A L D
-→ R N L D
+## Visitor journey
 
-Each consonant corresponds to a vertex of a tetrahedral coordinate system.
+The initial RONALD demonstration types and submits itself. The entry carousel
+then offers three modes:
 
-The resulting path through the tetrahedral space represents the identity of that Ronald.
+- **Enter** filters input to prefixes valid in the active universe.
+- **Build** exposes the variable positions and the progressive route to the
+  next universe.
+- **Random** animates the construction of a valid name and submits it.
 
-The goal is not to display text in 3D, but to visualise the hidden geometry behind names.
+Submitting a new name reveals it, ages existing entities in that universe, and
+adds it to the discovery list. Submitting a duplicate selects the existing
+entity. Reveal-all materialises the remaining 256 possibilities; clear-all
+removes only the active universe's entities.
 
-## Discoverable nameverse parameter matrices
+The discovery sequence is:
 
-The four consonants at positions 1, 3, 4, and 6 are the active parameters in
-each six-letter name. They also provide the tetrahedral name-vector used for
-placement; the tables below describe the additional visual meaning assigned to
-each slot.
+```text
+RONALD --build RODNEY--> RODNEY --build MARTIN--> MARTIN
+       --build GORDON--> GORDON --build GERALD--> GERALD
+```
 
-### GORDONverse — sequential crystalloid growth
+Each transition has a confirmation dialogue. Confirming unlocks and enters the
+new universe, creates its canonical entity, and exposes the unlocked layers in
+the layer menu. Returning to a layer restores its entities and interactions.
+Inactive entities are hidden and cannot be picked. `GODNEY` opens a refusal
+dialogue and does not unlock a universe.
 
-GORDONs grow through four stages from a unit tetrahedron, as though a gem is
-being cut. The first letter sets only the seed diameter. Later operations use a
-shared manipulation scale, so a large seed does not make every later feature
-larger as well.
+## Shared interaction
 
-| Slot | Meaning | G | R | D | N |
-| --- | --- | --- | --- | --- | --- |
-| 1 | Seed diameter | 1.40 | 1.56 | 1.72 | 1.88 |
-| 2 | Axial profile | Neutral tetrahedron | Moderate prismatic extrusion / shoulder (1.85 aspect; −0.28 diameter adjustment) | Elongated point | Shallow triangular tip chamfer |
-| 3 | Counter-form | Pointed bipyramidal shard, reflected across the outward face | Small counter-tetra, ratio 0.33 | Medium counter-tetra, ratio 0.67 | Full counter-tetra, ratio 1.00 |
-| 4 | Rotational faceting | None | 3-fold, 120° | 4-fold, 90° | Interleaved six-pass crown, 60° |
+- Hover highlights an entity and its discovery-list entry while suppressing
+  other path labels.
+- Click selects; clicking the sole selected entity again deselects it.
+- Shift-click toggles additive multi-selection.
+- Clicking empty space clears selection.
+- Double-click inspects an entity with a fitted camera view. Clicking an entry
+  in the discovery list also inspects it; Shift-click there multi-selects.
+- The contextual exit button returns from inspection.
+- OrbitControls provide rotate, pan, and zoom. Space or the orbit button
+  toggles automatic camera orbit; non-GERALD inspection starts orbiting.
 
-The stages are applied in order: seed, axial profile, counter-form, then
-rotational faceting. A third-position G retains the original G tip and reflects
-it through the profile's outward triangular face, producing a pointed
-bipyramidal shard rather than a flat terminal plate. The R prism reaches 1.05
-manipulation-scale units along the axis and narrows its far diameter to 0.72×,
-keeping it distinct without overwhelming the shared scale. The N rotational
-pass alternates full and 0.72× radial sectors: it keeps a sixfold facet rhythm
-while introducing a readable threefold crown rather than making a uniformly
-repeated six-sided shell.
+## Name systems
 
-The GORDON tetrahedral vectors are:
+Every universe has 256 generated names: four choices in each of four active
+positions.
 
-| G | R | D | N |
+| Universe | Schema | Active positions | Form |
 | --- | --- | --- | --- |
-| (-1, +1, -1) | (+1, +1, +1) | (+1, -1, -1) | (-1, -1, +1) |
+| RONALD | `[RNLD]O[RNLD]A[RNLD][RNLD]` | 1, 3, 5, 6 | Curved path from the origin through cumulative letter vectors |
+| RODNEY | `[RNDY]O[RNDY][RNDY]E[RNDY]` | 1, 3, 4, 6 | Path beginning at an outer vertex and stepping inward/toward vertices |
+| MARTIN | `[MRTN]A[MRTN][MRTN]I[MRTN]` | 1, 3, 4, 6 | Closed elliptical orbit and moving trail |
+| GORDON | `[GRDN]O[GRDN][GRDN]O[GRDN]` | 1, 3, 4, 6 | Sequentially constructed crystal |
+| GERALD | `[GRLD]E[GRLD]A[GRLD][GRLD]` | 1, 3, 5, 6 | Closed waveform crown and synthesizer voice |
 
-### MARTINverse — orbital mechanics
+Coordinate scale is 3. The tetrahedral assignments are:
 
-MARTINs use the same four active slots, but their result is a coloured object
-processing around a fixed orbit rather than a growing solid.
+| Universe | Letter vectors |
+| --- | --- |
+| RONALD | R `(1,1,1)`, N `(-1,-1,1)`, L `(-1,1,-1)`, D `(1,-1,-1)` |
+| RODNEY | R `(1,1,1)`, N `(-1,-1,1)`, Y `(-1,1,-1)`, D `(1,-1,-1)` |
+| MARTIN | M `(-1,1,-1)`, R `(1,1,1)`, T `(1,-1,-1)`, N `(-1,-1,1)` |
+| GORDON | G `(-1,1,-1)`, R `(1,1,1)`, D `(1,-1,-1)`, N `(-1,-1,1)` |
+| GERALD | G `(-1,1,-1)`, R `(1,1,1)`, L `(-1,-1,1)`, D `(1,-1,-1)` |
 
-| Slot | Meaning | M | R | T | N |
-| --- | --- | --- | --- | --- | --- |
-| 1 | Anchor / endpoint contribution | M vector | R vector | T vector | N vector |
-| 2 | Orbit shape (semi-minor ÷ semi-major) | Circle, 1.00 | Mild ellipse, 0.88 | Ellipse, 0.70 | Strong ellipse, 0.52 |
-| 3 | Inclination plane X | 0° | 60° | 120° | 180° |
-| 4 | Inclination plane Y | 0° | 60° | 120° | 180° |
+### RONALD and RODNEY
 
-The orbital endpoint is the sum of the four name-vectors. Its length sets the
-semi-major axis, hence the orbital diameter is `2 × endpoint length`. If the
-sum is the origin, MARTIN uses a canonical radius of 9 scene units and the
-first-letter vector supplies the radial direction. The orbit is always
-clockwise and takes 7 seconds per revolution. The initial phase is deliberately
-name-derived:
+RONALD uses active letters 1, 3, 5, and 6 as cumulative moves from the origin.
+The resulting five control points form a smooth tube path. RODNEY uses letters
+1, 3, 4, and 6: it starts four coordinate steps out at the first letter's
+vertex, then makes four equal moves toward the centre or the named outer
+vertices. Both use lineage-derived identity colour, progressive drawing,
+camera-scaled labels, selection emphasis, and entropy ageing.
 
-`phase = (slot1 × 64 + slot2 × 16 + slot3 × 4 + slot4) / 256`
+### MARTIN
 
-This keeps the 256 possible MARTINs visually out of sync without changing the
-shared orbital speed.
+| Slot | M | R | T | N |
+| --- | --- | --- | --- | --- |
+| 1 | Anchor vector | Anchor vector | Anchor vector | Anchor vector |
+| 2 | Circle 1.00 | Ellipse 0.88 | Ellipse 0.70 | Ellipse 0.52 |
+| 3 | X plane 0° | X plane 60° | X plane 120° | X plane 180° |
+| 4 | Y plane 0° | Y plane 60° | Y plane 120° | Y plane 180° |
 
-The MARTIN tetrahedral vectors are:
+The sum of the four vectors sets the semi-major axis and radial direction.
+When it sums to zero, a canonical radius of 9 is used with the first vector as
+the direction. MARTINs orbit clockwise once every 7 seconds. Their initial
+phase is the base-four name index divided by 256, keeping the population out of
+sync without varying speed.
 
-| M | R | T | N |
-| --- | --- | --- | --- |
-| (-1, +1, -1) | (+1, +1, +1) | (+1, -1, -1) | (-1, -1, +1) |
+### GORDON
 
-### GERALDverse — waveform crowns and tone
+GORDON applies four operations in name order:
 
-Every GERALD is a complete, unbroken waveform crown: a readable resting
-recipe bent into a circular ring with an integer number of spatial cycles. The
-ring rotates slowly and silently around its wheel axis at every attention level;
-rotation is deliberately independent of the audio animation.
+| Slot | G | R | D | N |
+| --- | --- | --- | --- | --- |
+| 1: seed diameter | 1.40 | 1.56 | 1.72 | 1.88 |
+| 2: axial profile | Neutral tetrahedron | Moderate tapered prism/shoulder | Elongated point | Shallow triangular tip chamfer |
+| 3: counter-form | Reflected pointed bipyramidal shard | 0.33 counter-tetra | 0.67 counter-tetra | 1.00 counter-tetra |
+| 4: rotational faceting | None | 3-fold / 120° | 4-fold / 90° | Interleaved 6-pass / 60° crown |
 
-The four active consonants control both geometry and sound:
+The seed diameter is independent of the shared manipulation scale used by the
+later stages. The R profile extends 1.05 manipulation units and narrows to
+0.72×. The N rotation alternates full and 0.72× radial sectors. GORDON uses
+physical materials, studio environment lighting, ACES tone mapping, and
+geometry-aware picking.
 
-| Slot | Visual meaning | G | R | L | D |
-| --- | --- | --- | --- | --- | --- |
-| 1 | Wheel axis | (−1,+1,−1) | (+1,+1,+1) | (−1,−1,+1) | (+1,−1,−1) |
-| 2 | Positive axial displacement / recipe waveform | +2.4 / sine | +7.2 / sawtooth | +12 / square | +16.8 / triangle |
-| 3 | Radius / harmonic count | 1.5 / 0 | 4.1 / 1 | 6.7 / 2 | 9.3 / 3 |
-| 4 | Spatial cycles / distortion drive | 3 / 0 | 4 / 18 | 5 / 58 | 6 / 140 |
+### GERALD
 
-The resting ring is the frozen recipe: one base waveform, its axis and positive
-displacement, its sleeve radius, and its integer cycle count. The waveform
-deflection is always parallel to the Letter-axis, never radial.
+GERALD is a closed crown whose visual waveform and Web Audio voice share the
+same four parameter indices:
 
-The active ring is the actual audio wave. It advances at the selected
-minor-seventh frequency and combines the oscillator with up to three harmonics
-using gains `[1, 0.68, 0.48, 0.34]`, then applies the same tanh distortion
-curve as the Web Audio voice. Its visual axial amplitude is intentionally
-compressed to keep fast square/saw waves legible without changing the sound.
+| Slot | G | R | L | D |
+| --- | --- | --- | --- | --- |
+| 1 | Axis G / sine | Axis R / sawtooth | Axis L / square | Axis D / triangle |
+| 2 | Position 2.4 / A2 110 Hz | 7.2 / C3 130.81 Hz | 12 / E3 164.81 Hz | 16.8 / G3 196 Hz |
+| 3 | Radius 1.5 / 3 chorus notes | 4.1 / 2 | 6.7 / 1 | 9.3 / 0 |
+| 4 | 3 cycles / 0.35 Hz filter sweep | 5 / 0.8 Hz | 7 / 1.8 Hz | 9 / 3.6 Hz |
 
-A complete reveal reads as four spaced concentric sleeves along each of the
-four pre-existing Letter-axes. Inspection turns the camera perpendicular to
-the wheel axis and fills roughly 70% of the screen. The front becomes a clear
-2D projection; the rear half remains visible as a quieter depth cue rather than
-obscuring the front.
+Waveform deflection is parallel to the selected axis. Resting crowns rotate
+slowly and silently. Hover animates and auditions quietly; click enables audio,
+selects, and briefly shivers the crown; inspection faces the wheel axis,
+fits the crown to the viewport, and uses maximum scrutiny. Multi-selection
+plays multiple voices. Leaving GERALD stops them. The synth uses gains
+`[1, 0.68, 0.48, 0.34]` and a low-pass cutoff oscillating around 3200 Hz with
+2600 Hz depth.
 
-GERALDs use a restrained pure-blue palette from near-black through blue to
-white on a rich sky-blue field (`#1B4D8F`).
+## Current scope
 
-GERALD attention states:
+The application is a static ES-module site with no build system, persistence,
+backend, analytics, settings panel, or automated tests. Discoveries exist only
+for the current page session. MARCUS and FERGUS are not implemented.
 
-| State | Visual | Audio |
-| --- | --- | --- |
-| No attention | Entropy-muted recipe ring; slow silent spin | Silent |
-| Mouseover | Saturated colour; actual wave animates rapidly | Quiet |
-| Click | Brief amplified Vib-Ribbon-style shiver, then live wave | Medium |
-| Double-click / history click | Axis-facing inspection with rear-depth fade | Maximum |
-
-Hover remains latched while the pointer stays inside the ring's projected
-bounded area, preventing rapid live motion from escaping mouse focus. Shift-click
-adds or removes entities from a multi-selection; clicking blank space clears
-the active selection, and clicking the same selected entity again deselects it.
-There is no separate oscilloscope panel: the GERALD crown is the oscilloscope.
-
----
-
-## Current visual language
-
-The scene should feel like an explorable mathematical space.
-
-Style:
-- muted grey background
-- ProFont Nerd Font
-- no glow effects
-- restrained colours
-- elegant/minimal rather than game-like
-
-The possibility space should appear as:
-- subtle grey nodes
-- no permanent grid
-- no large bounding geometry unless enabled
-
----
-
-## Ronald paths
-
-A Ronald path should:
-- grow smoothly from the centre
-- not appear as four discrete segments
-- be curved/smoothed optionally
-- have no endpoint marker
-- display the name along the vector
-- become more saturated as the identity emerges
-
-The selected Ronald should:
-- remain highlighted while the user pans and zooms
-- be significantly thicker than other paths
-- eventually support saturation highlighting rather than white
-
----
-
-## Interaction goals
-
-The application should support:
-
-1. Typed Ronald generation
-- user types a valid Ronald
-- path grows into existence
-- letters appear progressively
-
-2. Random Ronald generation
-- button cycles through candidate Ronalds
-- previews several possibilities
-- settles on one
-
-3. Exploration
-- click interior nodes, not only surface points
-- select any possible Ronald state
-- maintain selection while navigating
-
-4. Generation exploration (optional mode)
-- show families:
-  - RO____
-  - RON___
-  - RONAL_
-  - RONALD
-
-This should complement, not replace, the empty possibility-space mode.
-
----
-
-## Deployment
-
-The canonical frontend source is the repository root (`index.html`,
-`style.css`, `src/`, and `fonts/`). There is no committed deployment copy.
-`./scripts/deploy.sh` sends those files to the server's `www/` directory and
-the read-only NGINX container configuration from `deploy/` to the stack root.
-
-## Future settings
-
-Settings overlay should be semi-transparent over the scene.
-
-Possible controls:
-- background colour
-- line thickness
-- path smoothing
-- show bounding lines
-- separate paths
-- selected Ronald saturation
-- Ronald entropy rate
-
----
-
-## Technical principles
-
-Prefer:
-- modular code
-- maintainable classes
-- Three.js native solutions
-- performance over brute force
-
-Avoid:
-- generating every Ronald permanently
-- unnecessary animation loops
-- visual clutter
-
-The long-term goal is a navigable universe of possible Ronalds.
-
-Future universes currently held as names only: **MARCUSverse** and
-**FERGUSverse**. Their geometry and parameter matrices remain TBC.
+The canonical deployable frontend is `index.html`, `style.css`, `src/`, and
+`fonts/`. Deployment details belong in `deploy/README.md`.

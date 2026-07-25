@@ -1,104 +1,89 @@
-# Ronaldverse Explorer — Agent Handover
+# Ronald Explorer — maintainer context
 
-## What this is
+## Product
 
-An interactive Three.js artwork for the 256 valid `RONALD`-form names: `[RNLD]O[RNLD]A[RNLD][RNLD]`. The identity-bearing letters map to tetrahedral vectors (`R`, `N`, `L`, `D`); each name is a curved path from the origin through that space. Read `PROJECT.md` and `HISTORY.md` for the design rationale and mathematical model.
+Static Three.js artwork with five progressively unlocked universes:
 
-## Current product state
+```text
+RONALD → RODNEY → MARTIN → GORDON → GERALD
+```
 
-- Light default theme: `#EBEBEB` background, dark paths/UI; a dark-mode toggle is present.
-- ProFont is the interface and canvas typeface.
-- The initial `RONALD` demo types, pauses briefly, then submits automatically.
-- Paths persist after later submissions, age toward beige entropy in 10% steps, and appear in **Ronalds discovered**. Duplicates select/highlight the existing path and do not increment the count.
-- Entry carousel has exactly three modes: **Enter a Ronald**, **Build new Ronald**, **Random Ronald**.
-  - Typed input accepts only the valid positional schema.
-  - Build supports pointer and arrow-key editing.
-  - Random visually composes a valid Ronald before submitting.
-  - Typed, built, and random duplicate candidates use the existing Ronald’s identity colour.
-- Path labels lie along the final path segment, maintain camera-relative size, fade in after drawing, and are hidden for non-hovered paths while a path is hovered.
-- **Unveil all Ronalds** adds every remaining Ronald.
+Each universe enumerates 256 six-letter names from four variable positions.
+Visitors enter, build, or randomly generate names; entities persist for the
+page session. The transition name in each universe triggers a confirmation and
+unlocks the next. Unlocked layers remain reachable from the layer menu or by
+typing their canonical names. `PROJECT.md` is the canonical product and
+mathematical specification; keep this file as an implementation handover.
 
-## Current parameter matrices
+## Architecture
 
-The canonical, fuller explanation lives in `PROJECT.md`; this is the compact
-implementation reference for the discoverable solids and orbits. In every
-six-letter name, the active consonants are positions 1, 3, 4, and 6.
+- `index.html`, `style.css`: UI shell and all styling.
+- `src/main.js`: Three.js lifecycle, camera, picking, selection, inspection,
+  discovery state, dialogues, and universe switching.
+- `src/universes.js`: authoritative schemas, builders, enumeration, vector
+  recipes, and colour functions.
+- `src/RonaldPath.js`: RONALD/RODNEY paths, MARTIN orbits, and GERALD crowns.
+- `src/GordonObject.js`: generated crystal geometry, materials, animation, and
+  picking.
+- `src/GeraldSynth.js`: Web Audio voices and attention levels.
+- `src/RonaldInput.js`: typed/build/random carousel and transition routing.
+- `src/RonaldSpace.js`: axes, labels, and possibility nodes.
+- `src/RonaldHistory.js`: active-universe discovery list.
+- `src/constants.js`: shared geometry, schemas, themes, and audio constants.
 
-### GORDON
+There is no bundler, package manifest, backend, persistence, or automated test
+suite. Three.js 0.160 and addons load from jsDelivr through the import map.
 
-| Slot | G | R | D | N |
-| --- | --- | --- | --- | --- |
-| 1 seed diameter | 1.40 | 1.56 | 1.72 | 1.88 |
-| 2 axial profile | Neutral tetrahedron | Moderate prism / shoulder (1.85 aspect; −0.28 diameter adjustment) | Elongated point | Tip chamfer |
-| 3 counter-form | Pointed bipyramidal shard / outward-face reflection | 0.33 counter ratio | 0.67 counter ratio | 1.00 counter ratio |
-| 4 rotation | 0 passes | 120° / 3-fold | 90° / 4-fold | 60° interleaved crown |
+## Runtime model
 
-Growth is sequential. Third-position G retains the original G tip and reflects
-it through the profile's outward triangular face, producing a pointed
-bipyramidal shard. The R prism extends 1.05 manipulation-scale units and
-narrows its far diameter to 0.72×. The N rotation alternates full and 0.72×
-radial sectors, retaining sixfold faceting while adding a threefold crown.
+`UNIVERSES` in `src/universes.js` is the source of truth. A definition provides
+its schema, all names, prefix/name validation, builder behaviour, vectors,
+theme, geometry recipe, colour function, and optional transition.
 
-### MARTIN
+`main.js` keeps one entity array across universes. Switching hides and locks
+the old layer, restores the target layer, swaps theme/vectors/input/history,
+and stops or starts GERALD visibility. Counts and clear/reveal actions are
+per-universe. Duplicate submissions select the existing entity.
 
-| Slot | M | R | T | N |
-| --- | --- | --- | --- | --- |
-| 1 anchor | M vector | R vector | T vector | N vector |
-| 2 shape ratio | 1.00 circle | 0.88 ellipse | 0.70 ellipse | 0.52 ellipse |
-| 3 plane X | 0° | 60° | 120° | 180° |
-| 4 plane Y | 0° | 60° | 120° | 180° |
+Selection rules: click selects/toggles, Shift-click adds/removes, blank click
+clears, and double-click or a discovery-list click inspects. Inspection fits
+the camera and shows a contextual exit button. Space toggles camera orbit.
 
-MARTIN orbital diameter comes from twice the length of the summed name-vector;
-the clockwise period is fixed at 7 seconds. Initial phase uses the base-4
-parameter index `(p1 × 64 + p2 × 16 + p3 × 4 + p4) / 256`.
+GERALD audio must begin from a user gesture. Hover, selection, and inspection
+map to increasing scrutiny; selection enables audio and leaving the universe
+stops it. Crown cycles are 3/5/7/9 and slot four controls low-pass sweep, not
+distortion.
 
-## Important implementation details
+## Invariants and pitfalls
 
-### GERALD
+- Generated schemas and active positions differ: RONALD and GERALD use
+  positions 1/3/5/6; RODNEY, MARTIN, and GORDON use 1/3/4/6.
+- Progressive builder rules intentionally conceal the next universe. Preserve
+  the normalisers and conditional controls when changing schemas.
+- Preserve `focusWithinEntryStage()`, focus with `preventScroll`,
+  `entryStage.scrollLeft = 0`, and the CSS clipping behaviour; together they
+  prevent the carousel from skipping Build.
+- Picking is throttled to animation frames. GORDON additionally uses projected
+  geometry-aware fallback picking because transmissive crystals overlap.
+- Keep inactive entities unpickable. MARTIN may retain a faint last trail, but
+  interaction remains active-layer-only.
+- Keep animation idle paths cheap. GERALD buffers should update only while live
+  or shivering; device pixel ratio is capped at 2.
+- Preserve unrelated uncommitted changes.
 
-GERALD is a seamless waveform crown and four-parameter Web Audio synthesizer.
-Slots `[0, 2, 4, 5]` select minor-7 arpeggio tone, waveform, added harmonics,
-and distortion. The crown uses the same slots for wheel axis, direct axial
-position lookup, radius, and integer cycle count. The waveform deflection is
-parallel to the wheel axis, with four widened radius sleeves repeated along
-each pre-existing Letter-axis. Its crown is the oscilloscope: there is no separate canvas panel. Hover, click, and double-click increase
-audition volume; selection plucks the crown; inspection fills the view. Audio
-starts only from a GERALD selection gesture and stops on leaving the universe.
-Shift-click toggles additive multi-selection in every universe.
-Inspection keeps the true waveform geometry, turns the camera perpendicular to
-the rotation axis, and animates that same crown as a live oscilloscopic view.
-Attention states are: idle entropy-muted silent spin; mouseover saturated quiet
-wave animation; click brief pluck at medium volume; and double-click/history
-click axis-facing examination at maximum volume.
+## Development and verification
 
-- Main files: `src/main.js`, `src/RonaldInput.js`, `src/RonaldPath.js`, `src/RonaldSpace.js`, `src/RonaldHistory.js`, and `src/constants.js`.
-- The root `index.html`, `style.css`, `src/`, and `fonts/` are canonical; there
-  is no committed deployment copy. Use `./scripts/deploy.sh` to populate the
-  server's existing `www/` directory.
-- Bump the cache query in `index.html` and the `RonaldInput.js` query in `src/main.js` whenever client assets need forced refresh.
-- The carousel previously skipped Build because focusing it auto-scrolled `#ronald-entry-stage` while CSS also translated the track. Do not remove `focusWithinEntryStage()`, `preventScroll`, `scrollLeft = 0`, or `overflow: clip` without retesting all mode transitions.
+Run from the repository root:
 
-## Deployment
+```sh
+python3 -m http.server 8000 --bind 127.0.0.1
+```
 
-- Server layout is selected locally through `RONALD_DEPLOY_ROOT`, containing
-  `www/`, `docker-compose.yaml`, and `nginx.conf`.
-- `deploy/docker-compose.yaml` runs `nginxinc/nginx-unprivileged:1.28-alpine` on host port **8888** (container port 8080). Nginx Proxy Manager terminates public TLS and proxies HTTP to port 8888.
-- The site is bind-mounted read-only; the container is non-root, read-only, capability-dropped, and resource-limited where the host supports it.
-- Deploy from the current workspace with:
+Use `?test=gordon` or `?test=gerald` for direct visual harnesses. Manually test
+all three entry modes, transition routes and cancellation, duplicates,
+reveal/clear, hover, click/Shift-click/double-click, discovery-list inspection,
+camera navigation/orbit, switching among unlocked layers, resize, one entity
+versus 256 entities, and GERALD audio start/stop.
 
-  ```sh
-  ./scripts/deploy.sh
-  ```
-
-  The restart is optional for static bind-mounted files, but is a reliable final step. Keep port 8888 restricted to the proxy/Docker network.
-
-## Repository status
-
-- Git repository exists on `main`; remote is `https://github.com/chuckiton/ronaldspace.git`.
-- Base commit: `c824b20 Initial Ronald Space explorer`.
-- The remote push was previously blocked by unavailable GitHub authentication; authenticate before pushing.
-- Preserve existing uncommitted work. Do not reset or discard changes merely to clean the tree.
-
-## Working approach
-
-Maintain the restrained, mathematical visual language: no glow, no game-like UI, no gratuitous 3D text. Prefer modular Three.js code and performance-conscious updates. Verify interaction changes, especially drawing, pan/zoom, labels, overlapping paths, and the entry carousel.
+The repository root is canonical. `scripts/deploy.sh` copies it to the remote
+`www/`; container and proxy details live in `deploy/README.md`.
