@@ -2,7 +2,7 @@
 
 Ronald Explorer is a browser-based Three.js artwork about discovering geometry
 inside constrained six-letter names. It begins with RONALD paths in a shared
-tetrahedral space and can unfold into four related universes:
+tetrahedral space and can unfold into related universes:
 
 - **RONALD** — curved paths through a possibility space.
 - **RODNEY** — inward paths in a forbidden neighbouring space.
@@ -12,6 +12,8 @@ tetrahedral space and can unfold into four related universes:
 
 Every universe contains 256 possible entities. Four variable letters select
 tetrahedral coordinates and, where applicable, visual or sonic parameters.
+A shelved MARCUS prototype remains in the source for experimentation, but is
+not discoverable or accessible through the visitor flow.
 
 ## Discovery flow
 
@@ -50,9 +52,10 @@ from jsDelivr, so local use requires an internet connection and an HTTP server:
 python3 -m http.server 8000 --bind 127.0.0.1
 ```
 
-Open `http://localhost:8000`. The URL-only `?test=gordon` and `?test=gerald`
-harnesses unlock all layers, open the requested universe, and create one
-reference entity.
+Open `http://localhost:8000`. The URL-only `?test=gordon` harness unlocks every
+active universe, opens GORDON, and creates a reference GORDON.
+`?test=gerald` opens GERALD with its required route. The shelved MARCUS
+prototype remains available only through the explicit `?test=marcus` harness.
 
 ## Documentation
 
@@ -71,6 +74,7 @@ reference entity.
 | `src/universes.js` | Universe schemas, validation, geometry recipes, and colour rules |
 | `src/RonaldPath.js` | Path, orbit, and waveform-crown rendering |
 | `src/GordonObject.js` | GORDON geometry and materials |
+| `src/MarcusObject.js` | MARCUS radial deformations and chrome material |
 | `src/GeraldSynth.js` | GERALD Web Audio voice management |
 | `src/RonaldInput.js` | Typed, builder, and random entry modes |
 | `src/RonaldSpace.js` | Possibility nodes, axes, and labels |

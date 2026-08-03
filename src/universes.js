@@ -16,6 +16,8 @@ import {
     MARTIN_PATTERN,
     MARTIN_THEME,
     MARTIN_VECTORS,
+    MARCUS_THEME,
+    MARCUS_VECTORS,
     RODNEY_NAME,
     RODNEY_PATTERN,
     RODNEY_THEME,
@@ -34,6 +36,8 @@ const GORDON_TEMPLATE = ["GRDN", "O", "GRDN", "GRDN", "O", "GRDN"];
 const GORDON_VARIATION_PATTERN = /^[GRDN]O[GRDN][GRDN]O[GRDN]$/;
 const GERALD_TEMPLATE = ["GRLD", "E", "GRLD", "A", "GRLD", "GRLD"];
 const GERALD_VARIATION_PATTERN = /^[GRLD]E[GRLD]A[GRLD][GRLD]$/;
+const MARCUS_TEMPLATE = ["MRCS", "A", "MRCS", "MRCS", "U", "MRCS"];
+const MARCUS_VARIATION_PATTERN = /^[MRCS]A[MRCS][MRCS]U[MRCS]$/;
 
 function matchesTemplatePrefix(name, template) {
     return [...name].every((letter, index) => template[index]?.includes(letter));
@@ -500,10 +504,12 @@ export const UNIVERSES = {
         objectGenerator: true,
         transition: { name: GERALD_NAME, to: "gerald", id: "gerald-discovery" },
         isValidPrefix(name) {
-            return GERALD_NAME.startsWith(name) || matchesTemplatePrefix(name, GORDON_TEMPLATE);
+            return GERALD_NAME.startsWith(name)
+                || matchesTemplatePrefix(name, GORDON_TEMPLATE);
         },
         isValidName(name) {
-            return GORDON_VARIATION_PATTERN.test(name) || GERALD_PATTERN.test(name);
+            return GORDON_VARIATION_PATTERN.test(name)
+                || GERALD_PATTERN.test(name);
         },
         isGeneratedName(name) {
             return GORDON_VARIATION_PATTERN.test(name);
@@ -524,6 +530,7 @@ export const UNIVERSES = {
                 ).sort((left, right) => left - right);
             },
             controlVisible(name, index) {
+                if (name[0] === "M") return index !== 1 && index !== 4;
                 if (index === 1) return true;
                 if (index === 4) return name.slice(0, 4) === "GERA";
                 return true;
@@ -560,7 +567,7 @@ export const UNIVERSES = {
         noun: "GERALD",
         plural: "GERALDs",
         layerLabel: "GERALD",
-        revealLabel: "Sound all GERALDs",
+        revealLabel: "- Unleash GERALD",
         vectors: GERALD_VECTORS,
         allNames: enumerateTemplate(GERALD_TEMPLATE),
         template: GERALD_TEMPLATE,
@@ -592,6 +599,29 @@ export const UNIVERSES = {
                 ((Math.floor(code / 7) % 5) - 2) * 0.012
             );
         }
+    },
+    marcus: {
+        id: "marcus",
+        noun: "MARCUS",
+        plural: "MARCUSes",
+        layerLabel: "MARCUS",
+        revealLabel: "- ennumerate MARCUSes",
+        vectors: MARCUS_VECTORS,
+        allNames: enumerateTemplate(MARCUS_TEMPLATE),
+        template: MARCUS_TEMPLATE,
+        initialBuilderName: "MARCUS",
+        objectGenerator: "marcus",
+        isValidPrefix(name) { return matchesTemplatePrefix(name, MARCUS_TEMPLATE); },
+        isValidName(name) { return MARCUS_VARIATION_PATTERN.test(name); },
+        isGeneratedName(name) { return MARCUS_VARIATION_PATTERN.test(name); },
+        builder: {
+            normalise(name) { return normaliseTemplateName(name, MARCUS_TEMPLATE); },
+            choices(name, index) { return MARCUS_TEMPLATE[index]; },
+            indices() { return [0, 2, 3, 5]; },
+            controlVisible(name, index) { return index !== 1 && index !== 4; }
+        },
+        themeFor() { return MARCUS_THEME; },
+        colourForName() { return new THREE.Color(0xd8dde2); }
     }
 };
 

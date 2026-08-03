@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="theme-color" content="#d8d0bd">
+	<title>FINLAYverse — glyph field study</title>
+	<link rel="stylesheet" href="finlay.css">
+</head>
+<body>
+	<header class="masthead">
+		<a class="wordmark" href="finlay.html" aria-label="FINLAYverse field study">
+			<span>FINLAY</span><span>VERSE</span>
+		</a>
+		<p class="issue">FIELD STUDY 01<br>256 SURFACE MARKS</p>
+	</header>
+
+	<main>
+		<section class="hero" aria-labelledby="page-title">
+			<p class="kicker">A grammar for a continuous spherical inscription</p>
+			<h1 id="page-title">Every name leaves<br>a different mark.</h1>
+			<p class="lede">Four variable letters determine a rune’s body, intervention, witness, and cadence. The saga arrives at the body, is carried by its native strokes, then continues into the next name.</p>
+			<div class="hero-glyph" aria-hidden="true">
+				<canvas data-finlay="FINLAY"></canvas>
+				<span>FINLAY / F·N·L·Y</span>
+			</div>
+		</section>
+
+		<section class="workbench" aria-labelledby="workbench-title">
+			<div class="section-heading">
+				<div>
+					<p class="kicker">The naming instrument</p>
+					<h2 id="workbench-title">Cut a FINLAY</h2>
+				</div>
+				<p class="section-note">Change any dial. The name shapes the mark; its position supplies two gates that are absorbed into the glyph rather than drawn through it.</p>
+			</div>
+
+			<div class="material-bar">
+				<span>STROKE MATERIAL</span>
+				<div class="material-switcher" role="group" aria-label="Glyph stroke material">
+					<button type="button" data-material-choice="incised" aria-pressed="false">INCISED</button>
+					<button type="button" data-material-choice="ink" aria-pressed="true">INK</button>
+				</div>
+			</div>
+
+			<div class="dials" role="group" aria-label="FINLAY variable letters">
+				<label>
+					<span>01 / FORM</span>
+					<select data-slot="0" aria-label="Form letter">
+						<option>F</option><option>N</option><option>L</option><option>Y</option>
+					</select>
+					<small>ring · cross · cleft · staff</small>
+				</label>
+				<label>
+					<span>02 / INTERVENTION</span>
+					<select data-slot="1" aria-label="Intervention letter">
+						<option>F</option><option selected>N</option><option>L</option><option>Y</option>
+					</select>
+					<small>truncate · graft · orient · bar</small>
+				</label>
+				<label>
+					<span>03 / WITNESS</span>
+					<select data-slot="2" aria-label="Witness letter">
+						<option>F</option><option>N</option><option selected>L</option><option>Y</option>
+					</select>
+					<small>arc · saltire · wedge · score</small>
+				</label>
+				<label>
+					<span>04 / CADENCE</span>
+					<select data-slot="3" aria-label="Cadence letter">
+						<option>F</option><option>N</option><option>L</option><option selected>Y</option>
+					</select>
+					<small>taut · bow · counterbow · inflect</small>
+				</label>
+			</div>
+
+			<div class="inspector">
+				<div class="inspector-mark">
+					<canvas id="active-glyph" data-finlay="FINLAY"></canvas>
+					<ol class="generation-sequence" aria-label="Glyph construction sequence">
+						<li data-generation-stage="0"><b>01</b> body</li>
+						<li data-generation-stage="1"><b>02</b> intervention</li>
+						<li data-generation-stage="2"><b>03</b> witness</li>
+						<li data-generation-stage="3"><b>04</b> route</li>
+					</ol>
+				</div>
+				<div class="inspector-copy">
+					<p class="coordinate">SURFACE ADDRESS <span id="address">00.01.02.03</span></p>
+					<h3 id="active-name">FINLAY</h3>
+					<p id="active-recipe">Faceted ring body. A graft acts on the skeleton. A wedge witnesses the cut. The inflected sentence-line is absorbed by the body at its inherited gates.</p>
+					<div class="inspector-actions">
+						<button id="replay" type="button">REPLAY CUT</button>
+						<button id="randomise" type="button">CAST ANOTHER</button>
+					</div>
+				</div>
+			</div>
+
+			<div class="neighbour-heading">
+				<span>PREDECESSORS</span><b>LOCAL SAGA</b><span>SUCCESSORS</span>
+			</div>
+			<div class="siblings" id="siblings" aria-label="Gray-code neighbours"></div>
+		</section>
+
+		<section class="grammar" aria-labelledby="grammar-title">
+			<div class="section-heading">
+				<div>
+					<p class="kicker">Four cuts, read in order</p>
+					<h2 id="grammar-title">The grammar</h2>
+				</div>
+			</div>
+			<div class="grammar-grid">
+				<article><b>1</b><h3>Body</h3><p>The first variable chooses an unmistakable skeleton: ring, cross, cleft, or staff.</p></article>
+				<article><b>2</b><h3>Intervention</h3><p>The second truncates, grafts, sets orientation, or bars the skeleton. Orientation is drawn as given—never animated as a turn.</p></article>
+				<article><b>3</b><h3>Witness</h3><p>A detached mark records the third: arc, saltire, wedge, or score. It never interrupts the route.</p></article>
+				<article class="accent"><b>4</b><h3>Cadence</h3><p>The ur-form decides how the ligature grows; the fourth changes only its ductus: taut, bowed, counter-bowed, or inflected.</p></article>
+			</div>
+		</section>
+
+		<section class="sphere" aria-labelledby="sphere-title">
+			<div class="section-heading">
+				<div><p class="kicker">The complete inscription</p><h2 id="sphere-title">FINLAYsphere</h2></div>
+				<p class="section-note">Drag to turn the field. A 1,600-facet sandstone solid carries an independent, area-balanced 256-cell FINLAY mesh. Each new stroke burns yellow, cools through orange, then settles black.</p>
+			</div>
+			<div class="sphere-stage">
+				<canvas id="finlay-sphere" role="img" aria-label="Rotating rounded tetrahedral field showing all 256 FINLAY glyphs being inscribed"></canvas>
+				<div class="sphere-status" aria-live="polite">
+					<span id="sphere-count">000 / 256 ETCHED</span>
+					<span>STONE GEOMETRY / FINLAY DISTRIBUTION</span>
+				</div>
+				<div class="surface-key" aria-label="Independent geometry and inscription meshes">
+					<span>STONE GEOMETRY · 1,600 FACETS</span>
+					<span>FINLAY FIELD · 256 EQUALISED CELLS</span>
+				</div>
+				<div class="sphere-actions">
+					<button id="replay-sphere" type="button">RE-ETCH</button>
+					<button id="shuffle-sphere" type="button">SHUFFLE FIELD</button>
+					<button id="orbit-sphere" type="button" aria-pressed="true">PAUSE ORBIT</button>
+				</div>
+				<p class="sphere-hint">DRAG TO TURN · HOVER TO REVEAL CELL</p>
+			</div>
+		</section>
+
+		<section class="saga" aria-labelledby="saga-title">
+			<div class="section-heading">
+				<div><p class="kicker">Continuity proof</p><h2 id="saga-title">One line. All 256.</h2></div>
+				<p class="section-note">Four parent faces, each divided into 64 triangles. The scrambled cycle changes one letter at every shared edge and crosses between tetrahedral regions 32 times.</p>
+			</div>
+			<div class="saga-proof">
+				<div class="atlas">
+					<canvas id="saga-map" role="img" aria-label="Four-face tetrahedral atlas showing one continuous scrambled cycle through all 256 triangular FINLAY cells"></canvas>
+					<span class="atlas-poles">4 POLES / 32 REGION CROSSINGS</span>
+				</div>
+				<div class="proof-copy">
+					<p class="coordinate">CYCLE POSITION <span id="cycle-position">000 / 255</span></p>
+					<h3>256 / 256</h3>
+					<dl>
+						<div><dt>Names visited</dt><dd>256</dd></div>
+						<div><dt>Shared-edge crossings</dt><dd>256</dd></div>
+						<div><dt>Parent-face crossings</dt><dd>32</dd></div>
+						<div><dt>Cell-area spread</dt><dd>1.6×</dd></div>
+						<div><dt>Broken joins</dt><dd>0</dd></div>
+						<div><dt>Loose ends</dt><dd>0</dd></div>
+					</dl>
+					<p id="cycle-neighbours">The active mark receives the line from its predecessor and returns it to its successor.</p>
+				</div>
+			</div>
+		</section>
+
+		<section class="field" aria-labelledby="field-title">
+			<div class="section-heading">
+				<div><p class="kicker">Read around the active mark</p><h2 id="field-title">Sixteen-step passage</h2></div>
+				<p class="section-note">A consecutive excerpt from the cyclic saga. Every adjacent pair differs in exactly one of the four variable positions.</p>
+			</div>
+			<div class="field-grid" id="field-grid"></div>
+		</section>
+	</main>
+
+	<footer><span>FINLAYVERSE / PROVISIONAL NOTATION</span><span>F N L Y — I — A</span></footer>
+	<script src="src/finlay.js"></script>
+</body>
+</html>

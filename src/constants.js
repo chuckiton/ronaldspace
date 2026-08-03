@@ -24,14 +24,14 @@ export const VECTORS = {
     D: new THREE.Vector3(1, -1, -1)
 };
 
-// Rodneyspace occupies the same tetrahedron, replacing the Ronald L vertex
-// with Y. Keeping the geometry shared makes layers feel related rather than
-// like separate scenes.
+// Rodneyspace occupies the tetrahedron opposite RONALDspace, with Y replacing
+// the Ronald L vertex. Every RODNEY pole is the negation of its RONALDspace
+// counterpart, making the two layers spatial inverses.
 export const RODNEY_VECTORS = {
-    R: new THREE.Vector3(1, 1, 1),
-    N: new THREE.Vector3(-1, -1, 1),
-    Y: new THREE.Vector3(-1, 1, -1),
-    D: new THREE.Vector3(1, -1, -1)
+    R: new THREE.Vector3(-1, -1, -1),
+    N: new THREE.Vector3(1, 1, -1),
+    Y: new THREE.Vector3(1, -1, 1),
+    D: new THREE.Vector3(-1, 1, 1)
 };
 
 export const MARTIN_VECTORS = {
@@ -55,6 +55,13 @@ export const GERALD_VECTORS = {
     D: new THREE.Vector3(1, -1, -1)
 };
 
+export const MARCUS_VECTORS = {
+    M: new THREE.Vector3(-1, 1, -1),
+    R: new THREE.Vector3(1, 1, 1),
+    C: new THREE.Vector3(1, -1, -1),
+    S: new THREE.Vector3(-1, -1, 1)
+};
+
 // Shared by the Web Audio voices and the live waveform renderer. The four
 // name-controlled indices map to oscillator shape, note, chorus-note count,
 // and low-pass sweep rate respectively.
@@ -76,6 +83,8 @@ export const GORDON_NAME = "GORDON";
 export const GORDON_PATTERN = /^GORDON$/;
 export const GERALD_NAME = "GERALD";
 export const GERALD_PATTERN = /^GERALD$/;
+export const MARCUS_NAME = "MARCUS";
+export const MARCUS_PATTERN = /^MARCUS$/;
 export const GODNEY_NAME = "GODNEY";
 
 export const THEMES = {
@@ -137,4 +146,14 @@ export const GERALD_THEME = {
     axisLabel: "#f4f8ff",
     axisLine: 0x8db7ff,
     node: 0x5f91ed
+};
+
+export const MARCUS_THEME = {
+    background: 0xe00018,
+    pathOrigin: 0xf2f4f6,
+    agedPath: 0x8f969d,
+    identityLightness: 0.82,
+    axisLabel: "#ffffff",
+    axisLine: 0xffffff,
+    node: 0xffffff
 };

@@ -1,3 +1,5 @@
+import { getUniverse } from "./universes.js";
+
 export class RonaldHistory {
     constructor({ onSelect, onHoverChange }) {
         this.element = document.querySelector("#ronald-history");
@@ -7,6 +9,7 @@ export class RonaldHistory {
         this.hoveredRonald = null;
         this.selectedRonald = null;
         this.universe = "ronald";
+        this.columns = new Map();
     }
 
     add(ronald) {
@@ -28,8 +31,25 @@ export class RonaldHistory {
         });
 
         this.entries.set(ronald, entry);
-        this.element.prepend(entry);
+        const entries = this.ensureColumn(ronald.universe).querySelector(".ronald-history-column-entries");
+        entries.prepend(entry);
         this.refresh();
+    }
+
+    ensureColumn(universe) {
+        if (this.columns.has(universe)) return this.columns.get(universe);
+
+        const column = document.createElement("section");
+        column.className = "ronald-history-column";
+        column.dataset.historyUniverse = universe;
+        const heading = document.createElement("h2");
+        heading.textContent = `${getUniverse(universe).plural} discovered`;
+        const entries = document.createElement("div");
+        entries.className = "ronald-history-column-entries";
+        column.append(heading, entries);
+        this.columns.set(universe, column);
+        this.element.append(column);
+        return column;
     }
 
     remove(ronald) {
@@ -74,13 +94,28 @@ export class RonaldHistory {
     }
 
     setUniverse(universe) {
-        this.universe = universe;
+        this.setUniverses([universe], universe);
+    }
+
+    setUniverses(universes, primaryUniverse = universes.at(-1)) {
+        const activeUniverses = new Set(universes);
+        this.universe = primaryUniverse;
+        universes.forEach(id => this.ensureColumn(id));
+        this.columns.forEach((column, id) => {
+            column.hidden = !activeUniverses.has(id);
+            if (activeUniverses.has(id)) this.element.append(column);
+        });
         this.entries.forEach((entry, ronald) => {
-            const active = ronald.universe === universe;
+            const active = activeUniverses.has(ronald.universe);
             entry.hidden = !active;
             entry.disabled = !active || ronald.locked;
         });
-        this.element.dataset.universe = universe;
+        this.element.dataset.universe = primaryUniverse;
+        this.element.dataset.columns = String(universes.length);
+        this.element.setAttribute(
+            "aria-label",
+            `${universes.map(id => getUniverse(id).plural).join(" and ")} discovered`
+        );
         this.refresh();
     }
 }

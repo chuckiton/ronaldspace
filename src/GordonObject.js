@@ -10,6 +10,8 @@ import { getUniverse } from "./universes.js";
 
 const GROWTH_PER_SECOND = 1.45;
 const INACTIVE_OPACITY = 0.07;
+const INCURSIVE_OPACITY = 0.24;
+const INCURSIVE_COLOUR_SCALE = 0.46;
 const GORDON_ENTROPY_STEP = 0.025;
 const WORD_LABEL_OPACITY = 0.94;
 const WORD_LABEL_FADE_SECONDS = 0.3;
@@ -610,6 +612,7 @@ export class GordonObject {
         this.definition = getUniverse(universe);
         this.locked = false;
         this.inactiveUniverse = false;
+        this.incursive = false;
         this.selected = false;
         this.hovered = false;
         this.labelSuppressed = false;
@@ -710,6 +713,7 @@ export class GordonObject {
     ageToMaximumEntropy() { this.entropy = 1; this.updateAppearance(); }
     recoverVitality() { this.entropy = 0; this.updateAppearance(); }
     setLocked(locked) { this.locked = locked; if (locked) { this.setSelected(false); this.setHovered(false); } }
+    setIncursive(incursive) { this.incursive = incursive; this.updateAppearance(); }
 
     setUniverseVisible(active) {
         this.inactiveUniverse = !active;
@@ -727,6 +731,7 @@ export class GordonObject {
         // as another GORDON is selected, this one resumes its aged appearance.
         const displayedEntropy = this.selected ? 0 : this.entropy;
         const colour = this.identityColour.clone().lerp(this.agedColour, displayedEntropy);
+        if (this.incursive) colour.multiplyScalar(INCURSIVE_COLOUR_SCALE);
         const active = this.selected || this.hovered;
         this.updateVertexColours(colour);
         this.material.attenuationColor.copy(colour);
@@ -745,7 +750,9 @@ export class GordonObject {
         // alpha contribution can expose the stage through the crystal without
         // reviving the old double-sided sorting artefacts.
         this.material.opacity = this.inactiveUniverse
-            ? INACTIVE_OPACITY
+            ? this.incursive
+                ? INCURSIVE_OPACITY
+                : INACTIVE_OPACITY
             : this.selected
             ? 0.92
             : this.hovered
@@ -1028,6 +1035,7 @@ export class GordonObject {
     getPickableObjects() {
         return this.locked || this.inactiveUniverse ? [] : [this.object, this.pickProxy];
     }
+    isMaterialised() { return this.growth >= 1.3; }
     getFocusTarget() {
         return this.object.position.clone();
     }

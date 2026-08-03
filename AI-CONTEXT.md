@@ -54,6 +54,13 @@ map to increasing scrutiny; selection enables audio and leaving the universe
 stops it. Crown cycles are 3/5/7/9 and slot four controls low-pass sweep, not
 distortion.
 
+MARTIN orbits are centred on the origin. A 9-unit average radius uses a
+seven-second period; larger average radii revolve faster, within a restrained
+0.65–1.5× range. Name-derived phases keep the population visually out of sync.
+Each label stays at one fixed minor-axis extremum in the orbital plane, aligned
+to travel, and only reverses its facing in place. Inspection views the complete
+orbit face-on.
+
 ## Invariants and pitfalls
 
 - Generated schemas and active positions differ: RONALD and GERALD use
@@ -79,8 +86,11 @@ Run from the repository root:
 python3 -m http.server 8000 --bind 127.0.0.1
 ```
 
-Use `?test=gordon` or `?test=gerald` for direct visual harnesses. Manually test
-all three entry modes, transition routes and cancellation, duplicates,
+Use `?test=gordon` to open GORDON with every active universe unlocked.
+`?test=gerald` opens that target with its required route. MARCUS is shelved
+from the visitor flow and remains available only through explicit
+`?test=marcus` development access.
+Manually test all three entry modes, transition routes and cancellation, duplicates,
 reveal/clear, hover, click/Shift-click/double-click, discovery-list inspection,
 camera navigation/orbit, switching among unlocked layers, resize, one entity
 versus 256 entities, and GERALD audio start/stop.

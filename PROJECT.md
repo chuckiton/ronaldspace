@@ -95,9 +95,14 @@ camera-scaled labels, selection emphasis, and entropy ageing.
 
 The sum of the four vectors sets the semi-major axis and radial direction.
 When it sums to zero, a canonical radius of 9 is used with the first vector as
-the direction. MARTINs orbit clockwise once every 7 seconds. Their initial
-phase is the base-four name index divided by 256, keeping the population out of
-sync without varying speed.
+the direction. Every orbit is centred on the origin and runs clockwise. A
+9-unit average radius takes 7 seconds; revolution speed scales with average
+radius and is clamped to 0.65–1.5× the reference speed. Initial phase is the
+base-four name index divided by 256, keeping the population out of sync.
+Each label has one fixed minor-axis extremum, lies in the orbital plane, and
+runs tangent to the orbit. It never slides or changes station; only its facing
+reverses in place when viewed from behind. Inspection faces the orbital plane
+directly and fits the complete orbit and label in view.
 
 ### GORDON
 
@@ -140,7 +145,9 @@ plays multiple voices. Leaving GERALD stops them. The synth uses gains
 
 The application is a static ES-module site with no build system, persistence,
 backend, analytics, settings panel, or automated tests. Discoveries exist only
-for the current page session. MARCUS and FERGUS are not implemented.
+for the current page session. The MARCUS prototype is shelved from the visitor
+flow and retained only behind explicit URL test access. FERGUS is not
+implemented.
 
 The canonical deployable frontend is `index.html`, `style.css`, `src/`, and
 `fonts/`. Deployment details belong in `deploy/README.md`.

@@ -9,7 +9,13 @@ const ENTRY_MODE_LABELS = {
 };
 const MODE_TRANSITION_DURATION = 420;
 
-function normaliseName(value, definition, godneyInvocationEnabled = false, universeNavigations = []) {
+function transitionsFor(definition) {
+    return definition.transitions
+        ?? (definition.transition ? [definition.transition] : []);
+}
+
+function normaliseName(value, definitions, godneyInvocationEnabled = false, universeNavigations = []) {
+    definitions = Array.isArray(definitions) ? definitions : [definitions];
     let name = "";
 
     for (const character of value.toUpperCase()) {
@@ -19,7 +25,7 @@ function normaliseName(value, definition, godneyInvocationEnabled = false, unive
 
         const proposed = `${name}${character}`;
         if (
-            definition.isValidPrefix(proposed)
+            definitions.some(definition => definition.isValidPrefix(proposed))
             || (godneyInvocationEnabled && GODNEY_NAME.startsWith(proposed))
             || universeNavigations.some(navigation => navigation.name.startsWith(proposed))
         ) {
@@ -30,10 +36,11 @@ function normaliseName(value, definition, godneyInvocationEnabled = false, unive
     return name;
 }
 
-function validateNamePrefix(name, definition, godneyInvocationEnabled = false, universeNavigations = []) {
+function validateNamePrefix(name, definitions, godneyInvocationEnabled = false, universeNavigations = []) {
+    definitions = Array.isArray(definitions) ? definitions : [definitions];
     if (name.length === 6) {
         return {
-            valid: definition.isValidName(name)
+            valid: definitions.some(definition => definition.isValidName(name))
                 || (godneyInvocationEnabled && name === GODNEY_NAME)
                 || universeNavigations.some(navigation => navigation.name === name),
             complete: true
@@ -41,7 +48,7 @@ function validateNamePrefix(name, definition, godneyInvocationEnabled = false, u
     }
 
     return {
-        valid: definition.isValidPrefix(name)
+        valid: definitions.some(definition => definition.isValidPrefix(name))
             || (godneyInvocationEnabled && GODNEY_NAME.startsWith(name))
             || universeNavigations.some(navigation => navigation.name.startsWith(name)),
         complete: false
@@ -56,6 +63,7 @@ export class RonaldInput {
         this.typefaceReady = false;
         this.universe = "ronald";
         this.definition = getUniverse(this.universe);
+        this.definitions = [this.definition];
         this.godneyInvocationEnabled = true;
         this.universeNavigations = [];
         this.form = document.querySelector("#ronald-form");
@@ -70,6 +78,7 @@ export class RonaldInput {
         this.random = document.querySelector("#ronald-random");
         this.randomPreview = document.querySelector("#ronald-random-preview");
         this.modeLabel = document.querySelector("#ronald-mode-label");
+        this.universeMenu = document.querySelector("#entry-universe-menu");
         this.previousMode = document.querySelector("#previous-entry-mode");
         this.nextMode = document.querySelector("#next-entry-mode");
         this.button = document.querySelector("#draw-ronald");
@@ -78,8 +87,11 @@ export class RonaldInput {
         this.randomName = "";
         this.activeBuilderIndex = this.builderIndices[0];
         this.isRandomising = false;
+        this.isBackgroundGenerating = false;
         this.isModeTransitioning = false;
         this.modeTransitionTimeout = null;
+        this.backgroundGenerationTimeout = null;
+        this.backgroundGenerationQueue = [];
         this.submitFlashTimeout = null;
         this.updateModeInteractivity();
 
@@ -103,10 +115,15 @@ export class RonaldInput {
         });
         this.previousMode.addEventListener("click", () => this.cycleMode(-1));
         this.nextMode.addEventListener("click", () => this.cycleMode(1));
+        this.universeMenu.addEventListener("click", event => {
+            const target = event.target.closest("[data-entry-universe]")?.dataset.entryUniverse;
+            if (target) this.setTargetUniverse(target);
+        });
         this.builder.addEventListener("click", event => this.changeBuilderLetter(event));
         this.builder.addEventListener("keydown", event => this.handleBuilderKeydown(event));
         this.button.addEventListener("pointerdown", event => event.preventDefault());
         this.form.addEventListener("submit", event => this.submit(event));
+        this.renderUniverseMenu();
         this.updateBuilder();
         this.updateRandom();
         requestAnimationFrame(() => this.focusWithinEntryStage(this.input));
@@ -130,13 +147,13 @@ export class RonaldInput {
     update() {
         const name = normaliseName(
             this.input.value,
-            this.definition,
+            this.definitions,
             this.godneyInvocationEnabled,
             this.universeNavigations
         );
         const result = validateNamePrefix(
             name,
-            this.definition,
+            this.definitions,
             this.godneyInvocationEnabled,
             this.universeNavigations
         );
@@ -209,7 +226,40 @@ export class RonaldInput {
     }
 
     getModeLabel(mode) {
-        return ENTRY_MODE_LABELS[mode].replaceAll("RONALD", this.definition.noun);
+        if (mode !== "enter" || this.definitions.length === 1) {
+            return ENTRY_MODE_LABELS[mode].replaceAll("RONALD", this.definition.noun);
+        }
+        const nouns = this.definitions.map(definition => definition.noun);
+        const label = `${nouns.slice(0, -1).join(", ")} or ${nouns.at(-1)}`;
+        return ENTRY_MODE_LABELS[mode].replaceAll("RONALD", label);
+    }
+
+    setTargetUniverse(universe) {
+        const definition = this.definitions.find(candidate => candidate.id === universe);
+        if (!definition || definition === this.definition) return;
+
+        this.universe = universe;
+        this.definition = definition;
+        this.builderName = definition.initialBuilderName;
+        this.builderIndices = definition.builder.indices(this.builderName);
+        this.activeBuilderIndex = this.builderIndices[0];
+        this.randomName = "";
+        this.modeLabel.textContent = this.getModeLabel(this.mode);
+        this.builder.setAttribute("aria-label", `Build new ${definition.noun}`);
+        this.renderUniverseMenu();
+        this.refresh();
+    }
+
+    renderUniverseMenu() {
+        this.universeMenu.replaceChildren(...this.definitions.map(definition => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.textContent = definition.noun;
+            button.dataset.entryUniverse = definition.id;
+            button.setAttribute("aria-pressed", String(definition === this.definition));
+            return button;
+        }));
+        this.form.dataset.multiverse = String(this.definitions.length > 1);
     }
 
     updateModeInteractivity() {
@@ -357,16 +407,49 @@ export class RonaldInput {
     }
 
     updateDrawButton(isComplete) {
-        this.button.disabled = !isComplete || !this.typefaceReady;
+        this.button.disabled = this.isBackgroundGenerating
+            || !isComplete
+            || !this.typefaceReady;
     }
 
     updateSubmitLabel(name) {
+        if (this.isBackgroundGenerating) {
+            return;
+        }
+
         if (this.findExistingRonald(name)) {
             this.button.textContent = `Select ${name}`;
             return;
         }
 
         this.button.textContent = `Submit ${name.padEnd(6, "_")}`;
+    }
+
+    showBackgroundGeneration(onGenerated, duration = 900) {
+        if (this.isBackgroundGenerating) {
+            this.backgroundGenerationQueue.push({ onGenerated, duration });
+            return;
+        }
+
+        this.isBackgroundGenerating = true;
+        this.button.disabled = true;
+        this.button.textContent = "Please wait, handling incursion";
+        this.button.setAttribute("aria-busy", "true");
+
+        window.clearTimeout(this.backgroundGenerationTimeout);
+        this.backgroundGenerationTimeout = window.setTimeout(() => {
+            onGenerated?.();
+            this.isBackgroundGenerating = false;
+            this.button.removeAttribute("aria-busy");
+            this.refresh();
+            const nextGeneration = this.backgroundGenerationQueue.shift();
+            if (nextGeneration) {
+                this.showBackgroundGeneration(
+                    nextGeneration.onGenerated,
+                    nextGeneration.duration
+                );
+            }
+        }, duration);
     }
 
     submit(event) {
@@ -380,7 +463,7 @@ export class RonaldInput {
         const name = this.mode === "enter"
             ? normaliseName(
                 this.input.value,
-                this.definition,
+                this.definitions,
                 this.godneyInvocationEnabled,
                 this.universeNavigations
             )
@@ -401,12 +484,17 @@ export class RonaldInput {
             return;
         }
 
-        if (!this.definition.isValidName(name)) {
+        const discovery = this.definitions.flatMap(transitionsFor)
+            .find(transition => (
+                transition.name === name
+                && !this.definitions.some(definition => definition.id === transition.to)
+            ));
+        if (discovery) {
+            this.onUniverseTransition?.(discovery);
             return;
         }
 
-        if (this.definition.transition?.name === name) {
-            this.onUniverseTransition?.(this.definition.transition);
+        if (!this.definitions.some(definition => definition.isGeneratedName(name))) {
             return;
         }
 
@@ -432,17 +520,19 @@ export class RonaldInput {
         this.updateModeButtons();
         this.updateRandom();
 
-        const randomTarget = this.definition.transition && Math.random() < 0.035
-            ? this.definition.transition.name
+        const discoveries = transitionsFor(this.definition);
+        const randomDiscovery = discoveries.length > 0 && Math.random() < 0.035
+            ? discoveries[Math.floor(Math.random() * discoveries.length)]
             : null;
+        const randomTarget = randomDiscovery?.name ?? null;
         const randomTemplate = this.definition.template;
         let position = 0;
 
         const composeNextLetter = () => {
             if (position === randomTemplate.length) {
                 this.isRandomising = false;
-                if (this.definition.transition?.name === this.randomName) {
-                    this.onUniverseTransition?.(this.definition.transition);
+                if (randomDiscovery?.name === this.randomName) {
+                    this.onUniverseTransition?.(randomDiscovery);
                     this.isRandomising = false;
                     this.updateModeButtons();
                     this.updateRandom();
@@ -499,7 +589,7 @@ export class RonaldInput {
     playDemo(name, interval = 260, submitDelay = 600) {
         const letters = normaliseName(
             name,
-            this.definition,
+            this.definitions,
             this.godneyInvocationEnabled,
             this.universeNavigations
         );
@@ -524,8 +614,13 @@ export class RonaldInput {
     }
 
     setUniverse(universe) {
-        this.universe = universe;
-        this.definition = getUniverse(universe);
+        this.setUniverses([universe], universe);
+    }
+
+    setUniverses(universes, primaryUniverse = universes.at(-1)) {
+        this.definitions = universes.map(getUniverse);
+        this.universe = primaryUniverse;
+        this.definition = getUniverse(primaryUniverse);
         this.builderIndices = this.definition.builder.indices(this.definition.initialBuilderName);
         this.activeBuilderIndex = this.builderIndices[0];
         this.builderName = this.definition.initialBuilderName;
@@ -533,6 +628,7 @@ export class RonaldInput {
         this.randomName = "";
         this.modeLabel.textContent = this.getModeLabel(this.mode);
         this.builder.setAttribute("aria-label", `Build new ${this.definition.noun}`);
+        this.renderUniverseMenu();
         this.update();
         this.updateBuilder();
         this.updateRandom();

@@ -28,15 +28,19 @@ const WORD_LABEL_FADE_SECONDS = 0.3;
 const UNSELECTED_PATH_OPACITY = 0.56;
 const ACTIVE_PATH_OPACITY = 0.74;
 const INACTIVE_UNIVERSE_PATH_OPACITY = 0.075;
-const LANE_OFFSET_DISTANCE = 0.075;
+const INCURSIVE_PATH_OPACITY = 0.24;
+const INCURSIVE_COLOUR_SCALE = 0.46;
 const MARTIN_ORBIT_SECONDS = 7;
+const MARTIN_REFERENCE_RADIUS = 9;
+const MARTIN_MINIMUM_SPEED_MULTIPLIER = 0.65;
+const MARTIN_MAXIMUM_SPEED_MULTIPLIER = 1.5;
 // Each fixed orbit segment ages from the moment the MARTIN passes it. The
 // lifetime is one orbit, so no residual colour survives into a second pass.
-const MARTIN_TRAIL_LIFETIME_SECONDS = MARTIN_ORBIT_SECONDS;
 const MARTIN_HEAD_LENGTH = 0.075;
 const MARTIN_COLOUR_LENGTH = 0.34;
 const MARTIN_PHASE_SLOTS = 256;
 const MARTIN_PARAMETER_INDEX = { M: 0, R: 1, T: 2, N: 3 };
+const MARTIN_LABEL_PROGRESS = 0.25;
 const GERALD_IDLE_ROTATION_SPEED = 0.105;
 // Keep the live waveform's rapid motion readable without changing its audio
 // recipe or temporal rate.
@@ -173,22 +177,6 @@ function createGeraldInspectionWaveMaterial() {
     });
 }
 
-function laneOffsetForName(name) {
-    let hash = 0;
-
-    for (const letter of name) {
-        hash = (hash * 31 + letter.charCodeAt(0)) >>> 0;
-    }
-
-    const offset = new THREE.Vector3(
-        ((hash & 0xff) / 255) - 0.5,
-        (((hash >>> 8) & 0xff) / 255) - 0.5,
-        (((hash >>> 16) & 0xff) / 255) - 0.5
-    );
-
-    return offset.normalize().multiplyScalar(LANE_OFFSET_DISTANCE);
-}
-
 function martinPhaseForName(name) {
     const parameters = [name[0], name[2], name[3], name[5]];
     const parameterIndex = parameters.reduce(
@@ -202,7 +190,7 @@ function martinPhaseForName(name) {
     return parameterIndex / MARTIN_PHASE_SLOTS;
 }
 
-function createWordLabel(scene, name, curve, colour) {
+function createWordLabel(scene, name, curve, colour, anchorProgress = WORD_ANCHOR_PROGRESS) {
     const canvas = document.createElement("canvas");
     canvas.width = 512;
     canvas.height = 128;
@@ -227,7 +215,7 @@ function createWordLabel(scene, name, curve, colour) {
     label.visible = false;
     scene.add(label);
 
-    const tangent = curve.getTangent(WORD_ANCHOR_PROGRESS).normalize();
+    const tangent = curve.getTangent(anchorProgress).normalize();
     const referenceUp = Math.abs(tangent.dot(new THREE.Vector3(0, 1, 0))) > 0.95
         ? new THREE.Vector3(0, 0, 1)
         : new THREE.Vector3(0, 1, 0);
@@ -240,7 +228,7 @@ function createWordLabel(scene, name, curve, colour) {
         label,
         name,
         colour,
-        anchor: curve.getPoint(WORD_ANCHOR_PROGRESS),
+        anchor: curve.getPoint(anchorProgress),
         tangent,
         up,
         normal: new THREE.Vector3().crossVectors(tangent, up).normalize(),
@@ -268,6 +256,7 @@ export class RonaldPath {
         this.definition = getUniverse(universe);
         this.locked = false;
         this.inactiveUniverse = false;
+        this.incursive = false;
         this.visibleSegments = 0;
         this.ready = false;
         this.selected = false;
@@ -276,7 +265,6 @@ export class RonaldPath {
         this.word = null;
         this.entropy = 0;
         this.labelFadeProgress = 0;
-        this.laneOffset = laneOffsetForName(name);
         this.closedPath = Boolean(this.definition.closedPath);
         this.isMartin = universe === "martin";
         this.isGerald = universe === "gerald";
@@ -309,6 +297,39 @@ export class RonaldPath {
             this.closedPath,
             "centripetal"
         );
+        if (this.isMartin) {
+            const majorStart = this.curve.getPoint(0);
+            const majorEnd = this.curve.getPoint(0.5);
+            this.martinOrbitCentre = majorStart.clone().add(majorEnd).multiplyScalar(0.5);
+            this.martinLabelFrame = {
+                anchor: this.curve.getPoint(MARTIN_LABEL_PROGRESS),
+                tangent: this.curve.getTangent(MARTIN_LABEL_PROGRESS).normalize()
+            };
+            const majorAxis = majorStart.clone().sub(majorEnd).normalize();
+            const minorAxis = this.martinLabelFrame.anchor.clone()
+                .sub(this.martinOrbitCentre)
+                .normalize();
+            this.martinOrbitNormal = new THREE.Vector3()
+                .crossVectors(majorAxis, minorAxis)
+                .normalize();
+            this.martinInspectionUp = minorAxis;
+        } else {
+            this.martinOrbitCentre = null;
+            this.martinLabelFrame = null;
+            this.martinOrbitNormal = null;
+            this.martinInspectionUp = null;
+        }
+        this.martinOrbitSpeedMultiplier = this.isMartin
+            ? THREE.MathUtils.clamp(
+                controlPoints.reduce((total, point) => total + point.length(), 0)
+                    / controlPoints.length
+                    / MARTIN_REFERENCE_RADIUS,
+                MARTIN_MINIMUM_SPEED_MULTIPLIER,
+                MARTIN_MAXIMUM_SPEED_MULTIPLIER
+            )
+            : 1;
+        this.martinOrbitPeriod = MARTIN_ORBIT_SECONDS
+            / this.martinOrbitSpeedMultiplier;
         const identityColour = this.definition.colourForName(name, theme);
         this.identityColour = identityColour;
         this.agedColour = new THREE.Color(theme.agedPath);
@@ -415,8 +436,6 @@ export class RonaldPath {
             mesh.userData.ronaldPath = this;
         });
 
-        this.updateLaneOffset();
-
         if (this.isMartin) {
             this.path.visible = false;
             this.endPath.visible = false;
@@ -462,6 +481,12 @@ export class RonaldPath {
         }
     }
 
+    setIncursive(incursive) {
+        this.incursive = incursive;
+        this.updateColours();
+        this.updateBasePathOpacity();
+    }
+
     setUniverseVisible(active) {
         // Other layers remain as a faint, non-interactive trace instead of
         // disappearing completely. This makes the layer transition legible
@@ -497,6 +522,7 @@ export class RonaldPath {
                         this.identityColour,
                         ring / PATH_SAMPLES
                     ).lerp(this.agedColour, this.entropy);
+                if (this.incursive) colour.multiplyScalar(INCURSIVE_COLOUR_SCALE);
 
                 for (let side = 0; side <= PATH_RADIAL_SEGMENTS; side += 1) {
                     const offset = (ring * (PATH_RADIAL_SEGMENTS + 1) + side) * 3;
@@ -516,6 +542,7 @@ export class RonaldPath {
         const selectedColour = this.isGerald
             ? this.identityColour.clone().offsetHSL(0, 0.16, -0.01)
             : this.identityColour.clone().offsetHSL(0, 0.2, -0.03);
+        if (this.incursive) selectedColour.multiplyScalar(INCURSIVE_COLOUR_SCALE);
         const selectedAttribute = this.selectedGeometry.getAttribute("color");
 
         for (let index = 0; index < selectedAttribute.count; index += 1) {
@@ -527,6 +554,7 @@ export class RonaldPath {
             this.identityColour,
             WORD_ANCHOR_PROGRESS
         ).lerp(this.agedColour, this.entropy);
+        if (this.incursive) this.wordColour.multiplyScalar(INCURSIVE_COLOUR_SCALE);
 
         if (this.word) {
             this.word.colour.copy(this.wordColour);
@@ -539,7 +567,13 @@ export class RonaldPath {
             return;
         }
 
-        this.word = createWordLabel(this.scene, this.name, this.curve, this.wordColour);
+        this.word = createWordLabel(
+            this.scene,
+            this.name,
+            this.curve,
+            this.wordColour,
+            this.isMartin ? MARTIN_LABEL_PROGRESS : WORD_ANCHOR_PROGRESS
+        );
         this.ready = true;
         this.updateWordVisibility();
     }
@@ -603,7 +637,6 @@ export class RonaldPath {
             this.geraldFilterPhase = 0;
         }
         this.selected = selected;
-        this.updateLaneOffset();
         this.updateBasePathOpacity();
         this.updateHighlightVisibility();
         if (this.isGerald) this.updateColours();
@@ -648,7 +681,6 @@ export class RonaldPath {
             this.selectedPath.quaternion.copy(this.path.quaternion);
             this.selectedPath.scale.copy(this.path.scale);
         }
-        this.updateLaneOffset();
         this.updateBasePathOpacity();
         this.updateHighlightVisibility();
         if (this.isGerald) this.updateColours();
@@ -682,6 +714,12 @@ export class RonaldPath {
             : [this.path, this.endPath, this.selectedPath];
     }
 
+    isMaterialised() {
+        return this.isMartin
+            ? this.martinRevealProgress >= 1
+            : this.visibleSegments >= PATH_SAMPLES;
+    }
+
     getFocusTarget() {
         this.geometry.computeBoundingSphere();
         return this.path.localToWorld(this.geometry.boundingSphere.center.clone());
@@ -693,14 +731,26 @@ export class RonaldPath {
     }
 
     getInspectionViewDirection() {
+        if (this.isMartin) return this.martinOrbitNormal.clone();
         return this.geraldCrown?.viewDirection.clone() ?? null;
     }
 
     getInspectionUpDirection() {
+        if (this.isMartin) return this.martinInspectionUp.clone();
         return this.geraldCrown?.axis.clone() ?? null;
     }
 
     getInspectionDistance(camera = null) {
+        if (this.isMartin) {
+            const radius = this.getFocusRadius() + PATH_TUBE_RADIUS;
+            if (!camera) return radius * 3.2;
+            const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+            const horizontalFov = 2 * Math.atan(
+                Math.tan(verticalFov / 2) * camera.aspect
+            );
+            const limitingFov = Math.min(verticalFov, horizontalFov);
+            return radius / (Math.tan(limitingFov / 2) * 0.72);
+        }
         if (!this.isGerald) return null;
 
         if (!camera) {
@@ -862,20 +912,11 @@ export class RonaldPath {
         this.updateWordVisibility();
     }
 
-    updateLaneOffset() {
-        const offset = this.selected ? new THREE.Vector3() : this.laneOffset;
-        const highlightOffset = this.selected
-            ? new THREE.Vector3()
-            : this.hovered ? this.laneOffset : new THREE.Vector3();
-
-        this.path.position.copy(offset);
-        this.endPath.position.copy(offset);
-        this.selectedPath.position.copy(highlightOffset);
-    }
-
     updateBasePathOpacity() {
         const opacity = this.inactiveUniverse
-            ? INACTIVE_UNIVERSE_PATH_OPACITY
+            ? this.incursive
+                ? INCURSIVE_PATH_OPACITY
+                : INACTIVE_UNIVERSE_PATH_OPACITY
             : this.selected || this.hovered
             ? ACTIVE_PATH_OPACITY
             : UNSELECTED_PATH_OPACITY;
@@ -895,6 +936,7 @@ export class RonaldPath {
         }
 
         const trailColour = this.identityColour.clone().lerp(this.agedColour, this.entropy);
+        if (this.incursive) trailColour.multiplyScalar(INCURSIVE_COLOUR_SCALE);
         const white = new THREE.Color(0xffffff);
         const segmentColour = new THREE.Color();
         const attributeSets = [
@@ -913,7 +955,7 @@ export class RonaldPath {
             const age = this.martinSegmentAges[sourceRing];
             const ageProgress = age < 0
                 ? 1
-                : THREE.MathUtils.clamp(age / MARTIN_TRAIL_LIFETIME_SECONDS, 0, 1);
+                : THREE.MathUtils.clamp(age / this.martinOrbitPeriod, 0, 1);
             const colourProgress = THREE.MathUtils.smoothstep(
                 ageProgress,
                 MARTIN_HEAD_LENGTH,
@@ -952,7 +994,7 @@ export class RonaldPath {
             return;
         }
 
-        const orbitStep = delta / MARTIN_ORBIT_SECONDS;
+        const orbitStep = delta / this.martinOrbitPeriod;
         const previousProgress = this.martinOrbitProgress;
         this.martinOrbitProgress = THREE.MathUtils.euclideanModulo(
             previousProgress + orbitStep,
@@ -963,7 +1005,7 @@ export class RonaldPath {
             const age = this.martinSegmentAges[ring];
             if (age >= 0) {
                 this.martinSegmentAges[ring] = Math.min(
-                    MARTIN_TRAIL_LIFETIME_SECONDS,
+                    this.martinOrbitPeriod,
                     age + delta
                 );
             }
@@ -1024,13 +1066,33 @@ export class RonaldPath {
 
         this.updateWordVisibility();
 
-        const selectedFrame = this.selected ? this.selectedWordFrame(camera) : null;
-        const anchor = selectedFrame?.anchor ?? this.word.anchor;
-        const xAxis = selectedFrame?.tangent ?? this.word.tangent.clone();
+        const selectedFrame = !this.isMartin && this.selected
+            ? this.selectedWordFrame(camera)
+            : null;
+        const anchor = this.isMartin
+            ? this.martinLabelFrame.anchor
+            : selectedFrame?.anchor ?? this.word.anchor;
+        // Projection into the camera plane is destructive, so never mutate a
+        // stored frame (particularly MARTIN's one permanent label station).
+        const xAxis = (
+            this.isMartin
+                ? this.martinLabelFrame.tangent
+                : selectedFrame?.tangent ?? this.word.tangent
+        ).clone();
         let yAxis;
         let zAxis;
 
-        if (selectedFrame) {
+        if (this.isMartin) {
+            yAxis = anchor.clone().sub(this.martinOrbitCentre).normalize();
+            zAxis = new THREE.Vector3().crossVectors(xAxis, yAxis).normalize();
+            const cameraPosition = this.path.worldToLocal(camera.position.clone());
+            if (zAxis.dot(cameraPosition.sub(anchor)) < 0) {
+                // Preserve the one fixed anchor and outward offset. Only turn
+                // the label face over so its text is not mirrored from behind.
+                xAxis.negate();
+                zAxis.negate();
+            }
+        } else if (selectedFrame) {
             zAxis = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
             xAxis.addScaledVector(zAxis, -xAxis.dot(zAxis));
             if (xAxis.lengthSq() < 0.000001) {
@@ -1050,12 +1112,15 @@ export class RonaldPath {
             }
         }
 
-        const labelOffsetAxis = selectedFrame ? yAxis.clone() : this.word.up;
+        const labelOffsetAxis = this.isMartin || selectedFrame
+            ? yAxis.clone()
+            : this.word.up;
 
         const cameraSpaceTangent = xAxis.clone()
             .applyQuaternion(camera.quaternion.clone().invert());
 
-        if (Math.hypot(cameraSpaceTangent.x, cameraSpaceTangent.y) > 0.001) {
+        if (!this.isMartin
+            && Math.hypot(cameraSpaceTangent.x, cameraSpaceTangent.y) > 0.001) {
             const angle = Math.atan2(cameraSpaceTangent.y, cameraSpaceTangent.x);
 
             if (angle > Math.PI / 2 || angle < -Math.PI / 2) {
@@ -1069,13 +1134,18 @@ export class RonaldPath {
         const worldHeight = 2 * cameraDistance * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
         const worldUnitsPerPixel = worldHeight / renderer.domElement.clientHeight;
         const labelScale = worldUnitsPerPixel * WORD_SCREEN_WIDTH;
-        const labelOffset = PATH_TUBE_RADIUS + worldUnitsPerPixel * WORD_SCREEN_OFFSET;
-        this.word.label.position.copy(anchor)
+        const labelOffset = this.isMartin
+            ? PATH_TUBE_RADIUS * 1.8
+            : PATH_TUBE_RADIUS + worldUnitsPerPixel * WORD_SCREEN_OFFSET;
+        const labelAnchor = this.isMartin
+            ? this.path.localToWorld(anchor.clone())
+            : anchor;
+        this.word.label.position.copy(labelAnchor)
             .addScaledVector(labelOffsetAxis, labelOffset);
         this.word.label.quaternion.setFromRotationMatrix(orientation);
         this.word.label.scale.setScalar(labelScale);
 
-        if (this.selected) {
+        if (this.selected && !this.isMartin) {
             this.keepSelectedLabelOnscreen(camera, renderer, xAxis, yAxis, labelScale);
         }
     }

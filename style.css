@@ -62,6 +62,16 @@ body {
 	--unveil:#183d82;
 }
 
+:root[data-universe="marcus"] {
+	--background:#e00018;
+	--foreground:#fff;
+	--muted:rgba(255, 255, 255, 0.66);
+	--line:rgba(255, 255, 255, 0.76);
+	--button-border:rgba(255, 255, 255, 0.58);
+	--button-hover:rgba(255, 255, 255, 0.15);
+	--unveil:#fff;
+}
+
 #ronald-form {
 	position:absolute;
 	top:64px;
@@ -108,6 +118,32 @@ body {
 
 #next-entry-mode {
 	justify-self:end;
+}
+
+#entry-universe-menu {
+	display:none;
+	grid-template-columns:repeat(auto-fit, minmax(0, 1fr));
+	gap:6px;
+	margin:-2px 0 10px;
+}
+
+#ronald-form[data-multiverse="true"]:not([data-mode="enter"]) #entry-universe-menu {
+	display:grid;
+}
+
+#entry-universe-menu button {
+	min-width:0;
+	padding:4px 6px;
+	border:1px solid var(--button-border);
+	background:transparent;
+	color:var(--muted);
+	font:12px "ProFont", monospace;
+	cursor:pointer;
+}
+
+#entry-universe-menu button[aria-pressed="true"] {
+	background:var(--button-hover);
+	color:var(--foreground);
 }
 
 #previous-entry-mode:focus,
@@ -338,37 +374,50 @@ body {
 }
 
 #ronald-history {
-	display:flex;
-	flex-direction:column;
-	align-items:flex-start;
-	gap:6px;
+	display:grid;
+	grid-template-columns:repeat(var(--history-columns, 1), minmax(0, 1fr));
+	align-items:start;
+	gap:16px;
 	max-height:calc(100vh - 230px);
 	margin-top:24px;
 	overflow-y:auto;
 	padding-right:8px;
 }
 
-#ronald-form[data-mode="build"] #ronald-history {
+#ronald-form[data-mode="build"] #ronald-history,
+#ronald-form[data-multiverse="true"]:not([data-mode="enter"]) #ronald-history {
 	max-height:calc(100vh - 330px);
 }
 
-#ronald-history::before {
-	content:"RONALDS discovered";
-	margin-bottom:4px;
+#ronald-history[data-columns="2"] {
+	--history-columns:2;
+}
+
+#ronald-history[data-columns="3"] {
+	--history-columns:3;
+}
+
+#ronald-history[data-columns="4"],
+#ronald-history[data-columns="5"] {
+	--history-columns:2;
+}
+
+.ronald-history-column {
+	min-width:0;
+}
+
+.ronald-history-column h2 {
+	margin:0 0 10px;
 	color:var(--muted);
 	font:12px "ProFont", monospace;
+	white-space:nowrap;
 }
 
-#ronald-history[data-universe="rodney"]::before {
-	content:"RODNEYS discovered";
-}
-
-#ronald-history[data-universe="martin"]::before {
-	content:"MARTINs discovered";
-}
-
-#ronald-history[data-universe="gordon"]::before {
-	content:"GORDONs discovered";
+.ronald-history-column-entries {
+	display:flex;
+	flex-direction:column;
+	align-items:flex-start;
+	gap:6px;
 }
 
 .ronald-history-entry {
@@ -570,6 +619,12 @@ body {
 	cursor:pointer;
 }
 
+#layer-menu button[aria-pressed="true"] {
+	opacity:1;
+	outline:1px solid currentColor;
+	outline-offset:-1px;
+}
+
 .rodney-warning-actions button {
 	padding:7px 10px;
 }
@@ -608,9 +663,15 @@ body {
 #layer-menu {
 	display:flex;
 	flex-direction:column;
+	align-items:flex-end;
 	gap:12px;
 	padding-top:10px;
 	border-top:1px solid var(--button-border);
+}
+
+#gordon-branch-layers {
+	display:flex;
+	gap:12px;
 }
 
 #layer-menu button {
@@ -618,11 +679,17 @@ body {
 	align-items:center;
 	justify-content:flex-start;
 	gap:11px;
+	width:184px;
 	min-width:184px;
 	padding:10px 11px;
+	box-sizing:border-box;
 	text-align:left;
 	opacity:0.32;
 	transition:opacity 140ms linear, background-color 140ms linear, color 140ms linear;
+}
+
+#gordon-branch-layers button {
+	width:184px;
 }
 
 #layer-menu button[data-layer="gordon"] {
@@ -630,6 +697,7 @@ body {
 }
 
 #layer-menu button[data-layer="gerald"] { display:none; }
+#layer-menu button[data-layer="marcus"] { display:none; }
 
 #layer-menu button[data-layer="martin"] {
 	display:none;
@@ -641,18 +709,24 @@ body {
 
 :root[data-gordon-access="true"] #layer-menu button[data-layer="gordon"] { display:flex; }
 :root[data-gerald-access="true"] #layer-menu button[data-layer="gerald"] { display:flex; }
+:root[data-marcus-access="true"] #layer-menu button[data-layer="marcus"] { display:flex; }
 
 #layer-menu button:hover,
 #layer-menu button[data-layer="ronald"]:focus,
 #layer-menu button[data-layer="rodney"]:focus,
 :root[data-gordon-access="true"] #layer-menu button[data-layer="gordon"]:focus,
 :root[data-gerald-access="true"] #layer-menu button[data-layer="gerald"]:focus,
+:root[data-marcus-access="true"] #layer-menu button[data-layer="marcus"]:focus,
 :root[data-martin-access="true"] #layer-menu button[data-layer="martin"]:focus,
 :root[data-universe="ronald"] #layer-menu button[data-layer="ronald"],
 :root[data-universe="rodney"] #layer-menu button[data-layer="rodney"],
 :root[data-universe="martin"] #layer-menu button[data-layer="martin"],
 :root[data-universe="gordon"] #layer-menu button[data-layer="gordon"],
 :root[data-universe="gerald"] #layer-menu button[data-layer="gerald"] {
+	opacity:1;
+}
+
+:root[data-universe="marcus"] #layer-menu button[data-layer="marcus"] {
 	opacity:1;
 }
 
@@ -681,9 +755,8 @@ body {
 	fill:rgba(255, 255, 255, 0.12);
 }
 
-.layer-icon-star {
-	fill:currentColor;
-	stroke:none;
+.layer-icon.is-marcus .layer-icon-bridge {
+	fill:rgba(255, 255, 255, 0.12);
 }
 
 @keyframes ronald-cursor-blink {

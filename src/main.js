@@ -3,10 +3,11 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
-import { RonaldInput } from "./RonaldInput.js";
-import { RonaldHistory } from "./RonaldHistory.js";
-import { RonaldPath } from "./RonaldPath.js";
-import { GordonObject } from "./GordonObject.js";
+import { RonaldInput } from "./RonaldInput.js?v=20260726-sequenced-incursions";
+import { RonaldHistory } from "./RonaldHistory.js?v=20260726-multiverse-menus";
+import { RonaldPath } from "./RonaldPath.js?v=20260726-sequenced-incursions";
+import { GordonObject } from "./GordonObject.js?v=20260726-sequenced-incursions";
+import { MarcusObject } from "./MarcusObject.js";
 import { GeraldSynth } from "./GeraldSynth.js";
 import { initialiseRonaldSpace } from "./RonaldSpace.js";
 import { getUniverse, UNIVERSES } from "./universes.js";
@@ -18,8 +19,26 @@ const gordonStageKey = new THREE.DirectionalLight(0xffffff, 5.2);
 gordonStageKey.position.set(-12, 15, 10);
 gordonStageKey.target.position.set(0, 0, 0);
 scene.add(gordonStageKey, gordonStageKey.target);
+const marcusCoolKey = new THREE.DirectionalLight(0x7adfe2, 0);
+marcusCoolKey.position.set(11, 8, 13);
+marcusCoolKey.target.position.set(0, 0, 0);
+const marcusWarmRim = new THREE.DirectionalLight(0xffa56f, 0);
+marcusWarmRim.position.set(-10, 8, 12);
+marcusWarmRim.target.position.set(0, 0, 0);
+const marcusTealFill = new THREE.DirectionalLight(0x075863, 0);
+marcusTealFill.position.set(-7, 5, -11);
+marcusTealFill.target.position.set(0, 0, 0);
+scene.add(
+    marcusCoolKey,
+    marcusCoolKey.target,
+    marcusWarmRim,
+    marcusWarmRim.target,
+    marcusTealFill,
+    marcusTealFill.target
+);
 const themeName = "light";
 let universe = "ronald";
+const activeUniverses = new Set([universe]);
 const testingTarget = new URLSearchParams(window.location.search).get("test");
 let theme = getUniverse(universe).themeFor(themeName);
 let targetBackground = new THREE.Color(theme.background);
@@ -47,10 +66,54 @@ renderer.toneMapping = THREE.NoToneMapping;
 renderer.toneMappingExposure = 1;
 document.body.appendChild(renderer.domElement);
 
-// This is lighting information only: the visible stage background remains
-// unchanged, while physical GORDON facets gain bright studio reflections.
+function createMarcusReflectionStage() {
+    const environment = new THREE.Scene();
+    environment.background = new THREE.Color(0x00242d);
+
+    const addPanel = (width, height, position, colour) => {
+        const material = new THREE.MeshBasicMaterial({
+            color: new THREE.Color().setRGB(...colour),
+            side: THREE.DoubleSide,
+            toneMapped: false
+        });
+        const panel = new THREE.Mesh(
+            new THREE.PlaneGeometry(width, height),
+            material
+        );
+        panel.position.fromArray(position);
+        panel.lookAt(0, 0, 0);
+        environment.add(panel);
+    };
+
+    // A restrained petrol-and-peach studio. The nested cyan and white cards
+    // make one legible reflected softbox; the slim warm and horizon cards
+    // provide long curves on a conductive surface without a rainbow palette.
+    addPanel(3.8, 9, [8, 2, 5], [0.02, 2.8, 3.3]);
+    addPanel(2.2, 6.5, [7.7, 1.925, 4.8125], [4.2, 4, 3.75]);
+    addPanel(1.8, 9, [-8, 1, 5], [2.4, 0.85, 0.42]);
+    addPanel(7, 1.2, [-2, 8, 7], [2.2, 0.9, 0.48]);
+    addPanel(12, 0.36, [1, -1, 9], [0.035, 3.4, 3.8]);
+    addPanel(8, 1, [2, -7, 5], [1.8, 0.62, 0.3]);
+    return environment;
+}
+
+// Reflection environments are lighting information only. The visible stage
+// background remains the universe's perfectly flat colour.
 const gordonPmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = gordonPmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const gordonEnvironment = gordonPmrem.fromScene(
+    new RoomEnvironment(),
+    0.04
+).texture;
+const marcusReflectionStage = createMarcusReflectionStage();
+const marcusEnvironment = gordonPmrem.fromScene(
+    marcusReflectionStage,
+    0.005
+).texture;
+marcusReflectionStage.traverse(object => {
+    object.geometry?.dispose();
+    object.material?.dispose();
+});
+scene.environment = gordonEnvironment;
 gordonPmrem.dispose();
 
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -62,17 +125,40 @@ controls.target.set(0, 0, 0);
 controls.update();
 
 function updateGordonRenderPipeline() {
-    const inGordonverse = universe === "gordon";
-    renderer.toneMapping = inGordonverse
+    const usesPhysicalObjects = universe === "gordon" || universe === "marcus";
+    renderer.toneMapping = usesPhysicalObjects
         ? THREE.ACESFilmicToneMapping
         : THREE.NoToneMapping;
-    renderer.toneMappingExposure = inGordonverse ? 1.1 : 1;
+    renderer.toneMappingExposure = universe === "marcus" ? 0.86 : universe === "gordon" ? 1.1 : 1;
+    scene.environment = universe === "marcus"
+        ? marcusEnvironment
+        : gordonEnvironment;
+    gordonStageKey.intensity = universe === "marcus" ? 0.22 : 5.2;
+    marcusCoolKey.intensity = universe === "marcus" ? 0.6 : 0;
+    marcusWarmRim.intensity = universe === "marcus" ? 0.65 : 0;
+    marcusTealFill.intensity = universe === "marcus" ? 0.7 : 0;
 }
 
 updateGordonRenderPipeline();
 
 const space = initialiseRonaldSpace(scene, theme, getUniverse(universe).vectors);
 const ronalds = [];
+const backgroundIncursions = [];
+const pendingIncursionNames = new Set();
+const BACKGROUND_INCURSION_INTERVAL = 4;
+const INCURSION_TARGETS = {
+    ronald: "rodney",
+    rodney: "martin",
+    martin: "gordon",
+    gordon: "gerald"
+};
+const NON_INCURSIVE_INDEX_NAMES = new Set([
+    "RODNEY",
+    "MARTIN",
+    "GORDON",
+    "GERALD"
+]);
+let backgroundIncursionGeneration = 0;
 let selectedRonald = null;
 const selectedRonalds = new Set();
 const identifiedNames = Object.fromEntries(
@@ -97,6 +183,7 @@ const confirmGeraldButton = document.querySelector("#confirm-gerald");
 const godneyWarning = document.querySelector("#godney-warning");
 const acknowledgeGodneyButton = document.querySelector("#acknowledge-godney");
 const layerMenu = document.querySelector("#layer-menu");
+const gordonBranchLayers = document.querySelector("#gordon-branch-layers");
 const inspectorExitButton = document.querySelector("#abandon-gordon");
 const orbitCameraButton = document.querySelector("#orbit-camera");
 const geraldSynth = new GeraldSynth();
@@ -106,12 +193,17 @@ let cameraTransition = null;
 let cameraOrbiting = false;
 let orbitStartedByFocus = false;
 
+layerMenu.querySelectorAll("[data-layer]").forEach(button => {
+    button.setAttribute("aria-pressed", String(activeUniverses.has(button.dataset.layer)));
+});
+
 const INSPECTOR_EXIT_PREFIXES = {
     ronald: "Thank you, ",
     rodney: "Begone, ",
     martin: "Disregard ",
     gordon: "Forsake ",
-    gerald: "Mute "
+    gerald: "Silence, ",
+    marcus: "Betray "
 };
 
 function setInspectorExitLabel(ronald) {
@@ -129,7 +221,7 @@ function setInspectorExitLabel(ronald) {
 }
 
 function findRonald(name) {
-    return ronalds.find(ronald => ronald.universe === universe && ronald.name === name);
+    return ronalds.find(ronald => activeUniverses.has(ronald.universe) && ronald.name === name);
 }
 
 function activeDefinition() {
@@ -137,30 +229,35 @@ function activeDefinition() {
 }
 
 function isNameInActiveUniverse(name) {
-    return activeDefinition().isGeneratedName(name);
+    return [...activeUniverses].some(id => getUniverse(id).isGeneratedName(name));
+}
+
+function universeForName(name) {
+    return [...activeUniverses].find(id => getUniverse(id).isGeneratedName(name));
 }
 
 function updateRonaldCount() {
-    const definition = activeDefinition();
-    const count = identifiedNames[universe];
-    const noun = count === 1 ? definition.noun : definition.plural;
-    ronaldCount.textContent = `${count} ${noun} identified`;
+    const parts = [...activeUniverses].map(id => {
+        const definition = getUniverse(id);
+        const count = identifiedNames[id];
+        return `${count} ${count === 1 ? definition.noun : definition.plural}`;
+    });
+    ronaldCount.textContent = `${parts.join(" + ")} identified`;
 }
 
 function updateUnveilAllButton() {
     const definition = activeDefinition();
-    const names = definition.allNames;
-    const discovered = ronalds.filter(ronald => ronald.universe === universe).length;
+    const names = [...activeUniverses].flatMap(id => getUniverse(id).allNames);
+    const discovered = ronalds.filter(ronald => activeUniverses.has(ronald.universe)).length;
 
-    unveilAllButton.textContent = definition.revealLabel;
+    unveilAllButton.textContent = `Unveil all ${[...activeUniverses].map(id => getUniverse(id).plural).join(" + ")}`;
     unveilAllButton.disabled = discovered === names.length;
 }
 
 function updateClearAllButton() {
-    const definition = activeDefinition();
-    const discovered = ronalds.filter(ronald => ronald.universe === universe).length;
+    const discovered = ronalds.filter(ronald => activeUniverses.has(ronald.universe)).length;
 
-    clearAllButton.textContent = `Clear all ${definition.plural}`;
+    clearAllButton.textContent = `Clear all ${[...activeUniverses].map(id => getUniverse(id).plural).join(" + ")}`;
     clearAllButton.disabled = discovered === 0;
 }
 
@@ -197,7 +294,7 @@ function selectRonald(ronald, {
     audition = false,
     toggleSame = false
 } = {}) {
-    if (ronald.locked || ronald.universe !== universe) {
+    if (ronald.locked || !activeUniverses.has(ronald.universe)) {
         return;
     }
 
@@ -330,7 +427,7 @@ function updateCameraOrbit(delta) {
 }
 
 function focusEntity(ronald, { activateOrbit = false } = {}) {
-    if (ronald.locked || ronald.universe !== universe) {
+    if (ronald.locked || !activeUniverses.has(ronald.universe)) {
         return;
     }
 
@@ -417,15 +514,19 @@ function addRonald(name) {
         return null;
     }
 
-    const ronald = activeDefinition().objectGenerator
-        ? new GordonObject(scene, name, theme, { universe })
-        : new RonaldPath(scene, name, theme, {
-        universe
-        });
+    const targetUniverse = universeForName(name);
+    const definition = getUniverse(targetUniverse);
+    const targetTheme = definition.themeFor(themeName);
+    const generator = definition.objectGenerator;
+    const ronald = generator === "marcus"
+        ? new MarcusObject(scene, name, targetTheme, { universe: targetUniverse })
+        : generator
+        ? new GordonObject(scene, name, targetTheme, { universe: targetUniverse })
+        : new RonaldPath(scene, name, targetTheme, { universe: targetUniverse });
     ronald.enableWordLabel();
     ronalds.push(ronald);
     history.add(ronald);
-    identifiedNames[universe] += 1;
+    identifiedNames[targetUniverse] += 1;
     return ronald;
 }
 
@@ -441,13 +542,20 @@ function discoverRonald(name, { audition = false } = {}) {
         return existingRonald;
     }
 
-    ronalds.filter(ronald => ronald.universe === universe).forEach(ronald => ronald.increaseEntropy());
+    ronalds.filter(ronald => activeUniverses.has(ronald.universe)).forEach(ronald => ronald.increaseEntropy());
     history.refresh();
     const ronald = addRonald(name);
     selectRonald(ronald, { audition });
     updateRonaldCount();
     updateUnveilAllButton();
     updateClearAllButton();
+    const incursionTarget = INCURSION_TARGETS[ronald.universe];
+    if (
+        incursionTarget
+        && identifiedNames[ronald.universe] % BACKGROUND_INCURSION_INTERVAL === 0
+    ) {
+        scheduleBackgroundIncursion(ronald, incursionTarget);
+    }
     return ronald;
 }
 
@@ -486,10 +594,120 @@ const input = new RonaldInput(
     }
 );
 
+function scheduleBackgroundIncursion(sourceRonald, targetUniverse) {
+    const sourceUniverse = sourceRonald.universe;
+    const targetDefinition = getUniverse(targetUniverse);
+    const existingNames = new Set(backgroundIncursions.map(incursion => incursion.name));
+    const candidates = targetDefinition.allNames.filter(
+        name => !NON_INCURSIVE_INDEX_NAMES.has(name)
+            && !existingNames.has(name)
+            && !pendingIncursionNames.has(name)
+    );
+
+    if (candidates.length === 0) {
+        return;
+    }
+
+    const name = candidates[Math.floor(Math.random() * candidates.length)];
+    pendingIncursionNames.add(name);
+    const generation = backgroundIncursionGeneration;
+    const beginIncursion = () => {
+        const generationWasCancelled = (
+            generation !== backgroundIncursionGeneration
+            || !ronalds.includes(sourceRonald)
+            || !activeUniverses.has(sourceUniverse)
+        );
+        if (generationWasCancelled) {
+            pendingIncursionNames.delete(name);
+            return;
+        }
+
+        input.showBackgroundGeneration(() => {
+            if (
+                generation !== backgroundIncursionGeneration
+                || !ronalds.includes(sourceRonald)
+                || !activeUniverses.has(sourceUniverse)
+            ) {
+                pendingIncursionNames.delete(name);
+                return;
+            }
+
+            // The identity is selected in the parallel verse at threshold
+            // time, but its geometry intrudes only after the requested entity
+            // has completed its own reveal and the handling notice has run.
+            const targetTheme = targetDefinition.themeFor(themeName);
+            const generator = targetDefinition.objectGenerator;
+            const incursion = generator
+                ? new GordonObject(scene, name, targetTheme, { universe: targetUniverse })
+                : new RonaldPath(scene, name, targetTheme, { universe: targetUniverse });
+            incursion.sourceUniverse = sourceUniverse;
+            incursion.enableWordLabel();
+            incursion.setIncursive(true);
+            incursion.setLocked(true);
+            incursion.setUniverseVisible(false);
+            backgroundIncursions.push(incursion);
+            pendingIncursionNames.delete(name);
+            if (unlockedUniverses.has(targetUniverse)) {
+                promoteBackgroundIncursions(targetUniverse);
+            }
+        });
+    };
+
+    const waitForSourceReveal = () => {
+        if (
+            generation !== backgroundIncursionGeneration
+            || !ronalds.includes(sourceRonald)
+            || !activeUniverses.has(sourceUniverse)
+        ) {
+            pendingIncursionNames.delete(name);
+            return;
+        }
+        if (sourceRonald.isMaterialised?.()) {
+            beginIncursion();
+            return;
+        }
+        requestAnimationFrame(waitForSourceReveal);
+    };
+
+    requestAnimationFrame(waitForSourceReveal);
+}
+
+function promoteBackgroundIncursions(targetUniverse) {
+    for (let index = backgroundIncursions.length - 1; index >= 0; index -= 1) {
+        const incursion = backgroundIncursions[index];
+        if (incursion.universe !== targetUniverse) continue;
+
+        backgroundIncursions.splice(index, 1);
+        delete incursion.sourceUniverse;
+        incursion.setIncursive(false);
+        const active = activeUniverses.has(targetUniverse);
+        incursion.setLocked(!active);
+        incursion.setUniverseVisible(active);
+        ronalds.push(incursion);
+        history.add(incursion);
+        identifiedNames[targetUniverse] += 1;
+    }
+
+    updateRonaldCount();
+    updateUnveilAllButton();
+    updateClearAllButton();
+    input.refresh();
+}
+
+function clearBackgroundIncursions(predicate = () => true) {
+    backgroundIncursionGeneration += 1;
+    for (let index = backgroundIncursions.length - 1; index >= 0; index -= 1) {
+        const incursion = backgroundIncursions[index];
+        if (!predicate(incursion)) continue;
+        incursion.dispose();
+        backgroundIncursions.splice(index, 1);
+    }
+}
+
 function updateUniverseNavigations() {
     input.setUniverseNavigations(
         [...unlockedUniverses]
-            .filter(id => id !== universe)
+            .filter(id => !activeUniverses.has(id))
             .map(id => ({ name: getUniverse(id).initialBuilderName, to: id }))
     );
 }
@@ -497,14 +715,14 @@ function updateUniverseNavigations() {
 updateUniverseNavigations();
 
 unveilAllButton.addEventListener("click", () => {
-    const names = activeDefinition().allNames;
+    const names = [...activeUniverses].flatMap(id => getUniverse(id).allNames);
     const remainingRonalds = names.filter(name => !findRonald(name));
 
     if (remainingRonalds.length === 0) {
         return;
     }
 
-    ronalds.filter(ronald => ronald.universe === universe).forEach(ronald => ronald.increaseEntropy());
+    ronalds.filter(ronald => activeUniverses.has(ronald.universe)).forEach(ronald => ronald.increaseEntropy());
     history.refresh();
     remainingRonalds.forEach(addRonald);
     updateRonaldCount();
@@ -526,7 +744,7 @@ clearAllButton.addEventListener("click", () => {
     for (let index = ronalds.length - 1; index >= 0; index -= 1) {
         const ronald = ronalds[index];
 
-        if (ronald.universe !== universe) {
+        if (!activeUniverses.has(ronald.universe)) {
             continue;
         }
 
@@ -535,17 +753,30 @@ clearAllButton.addEventListener("click", () => {
         ronalds.splice(index, 1);
     }
 
-    identifiedNames[universe] = 0;
+    activeUniverses.forEach(id => { identifiedNames[id] = 0; });
+    clearBackgroundIncursions(
+        incursion => activeUniverses.has(incursion.sourceUniverse)
+    );
     updateRonaldCount();
     updateUnveilAllButton();
     updateClearAllButton();
     input.refresh();
 });
 
-function setUniverse(nextUniverse) {
-    if (nextUniverse === universe || !unlockedUniverses.has(nextUniverse)) {
+function averageThemeColour(property) {
+    const colours = [...activeUniverses].map(id => new THREE.Color(
+        getUniverse(id).themeFor(themeName)[property]
+    ));
+    return colours.slice(1).reduce((result, colour) => result.add(colour), colours[0])
+        .multiplyScalar(1 / colours.length);
+}
+
+function setUniverse(nextUniverse, { additive = false } = {}) {
+    if (!unlockedUniverses.has(nextUniverse)) {
         return;
     }
+    if (additive && activeUniverses.has(nextUniverse) && activeUniverses.size === 1) return;
+    if (!additive && nextUniverse === universe && activeUniverses.size === 1) return;
 
     if (focusedEntity) {
         abandonFocus();
@@ -555,31 +786,50 @@ function setUniverse(nextUniverse) {
     selectedRonald = null;
     history.setSelected(null);
     setHoveredRonald(null);
-    ronalds.filter(ronald => ronald.universe === universe).forEach(ronald => {
+    ronalds.filter(ronald => activeUniverses.has(ronald.universe)).forEach(ronald => {
         ronald.ageToMaximumEntropy();
         ronald.setLocked(true);
     });
-    universe = nextUniverse;
+    if (additive) {
+        activeUniverses.has(nextUniverse)
+            ? activeUniverses.delete(nextUniverse)
+            : activeUniverses.add(nextUniverse);
+    } else {
+        activeUniverses.clear();
+        activeUniverses.add(nextUniverse);
+    }
+    universe = activeUniverses.has(nextUniverse)
+        ? nextUniverse
+        : [...activeUniverses].at(-1);
+    clearBackgroundIncursions(
+        incursion => !activeUniverses.has(incursion.sourceUniverse)
+    );
     updateGordonRenderPipeline();
     document.documentElement.dataset.universe = universe;
+    document.documentElement.dataset.activeUniverses = [...activeUniverses].join(" ");
+    layerMenu.querySelectorAll("[data-layer]").forEach(button => {
+        button.setAttribute("aria-pressed", String(activeUniverses.has(button.dataset.layer)));
+    });
     const definition = activeDefinition();
     theme = definition.themeFor(themeName);
-    targetBackground.set(theme.background);
+    targetBackground.copy(averageThemeColour("background"));
+    const rootStyle = document.documentElement.style;
+    rootStyle.setProperty("--background", `#${targetBackground.getHexString()}`);
     space.setTheme(theme);
     space.setVectors(definition.vectors);
     ronalds.forEach(ronald => {
         ronald.setTheme(ronald.definition.themeFor(themeName));
-        if (ronald.universe === universe) {
+        if (activeUniverses.has(ronald.universe)) {
             // The entropy lock only protects the inactive layer during an
             // incursion. Returning restores both vitality and interaction.
             ronald.setLocked(false);
             ronald.recoverVitality();
         }
-        ronald.setUniverseVisible(ronald.universe === universe);
+        ronald.setUniverseVisible(activeUniverses.has(ronald.universe));
     });
-    history.setUniverse(universe);
-    input.setUniverse(universe);
-    geraldSynth.setVisible(universe === "gerald");
+    history.setUniverses([...activeUniverses], universe);
+    input.setUniverses([...activeUniverses], universe);
+    geraldSynth.setVisible(activeUniverses.has("gerald"));
     updateGeraldAudition();
     updateUniverseNavigations();
     updateRonaldCount();
@@ -588,8 +838,20 @@ function setUniverse(nextUniverse) {
 }
 
 function unlockUniverse(id) {
+    const newlyUnlocked = !unlockedUniverses.has(id);
     unlockedUniverses.add(id);
     document.documentElement.dataset[`${id}Access`] = "true";
+    if (newlyUnlocked && (id === "gerald" || id === "marcus")) {
+        const layerButton = gordonBranchLayers.querySelector(`[data-layer="${id}"]`);
+        const discoveredSibling = [...gordonBranchLayers.querySelectorAll("[data-layer]")]
+            .find(button => button !== layerButton && unlockedUniverses.has(button.dataset.layer));
+
+        if (discoveredSibling) {
+            gordonBranchLayers.insertBefore(layerButton, discoveredSibling);
+        } else {
+            gordonBranchLayers.append(layerButton);
+        }
+    }
     updateUniverseNavigations();
 }
 
@@ -607,6 +869,7 @@ cancelRodneyButton.addEventListener("click", closeRodneyWarning);
 confirmRodneyButton.addEventListener("click", () => {
     closeRodneyWarning();
     unlockUniverse("rodney");
+    promoteBackgroundIncursions("rodney");
     setUniverse("rodney");
     discoverRonald("RODNEY");
 });
@@ -723,20 +986,27 @@ window.addEventListener("keydown", event => {
 
 layerMenu.addEventListener("click", event => {
     const layer = event.target.closest("[data-layer]")?.dataset.layer;
-    if (layer) setUniverse(layer);
+    if (layer) setUniverse(layer, { additive: event.shiftKey });
 });
 
-if (testingTarget === "gordon" || testingTarget === "gerald") {
+if (["gordon", "gerald", "marcus"].includes(testingTarget)) {
     // Deliberately URL-only: this is a test harness, not a discoverable app
-    // control. It grants the route and materialises a useful reference gem.
-    ["rodney", "martin", "gordon", "gerald"].forEach(unlockUniverse);
+    // control. MARCUS remains available only through its explicit target.
+    const testRoutes = {
+        gordon: ["rodney", "martin", "gordon", "gerald"],
+        gerald: ["rodney", "martin", "gordon", "gerald"],
+        marcus: ["rodney", "martin", "gordon", "marcus"]
+    };
+    const unlockedTestRoute = testRoutes[testingTarget];
+    unlockedTestRoute.forEach(unlockUniverse);
     setUniverse(testingTarget);
-    discoverRonald(testingTarget === "gerald" ? "GERALD" : "GORDON");
+    const testingNames = { gordon: "GORDON", gerald: "GERALD", marcus: "MARCUS" };
+    discoverRonald(testingNames[testingTarget]);
 }
 
 space.fontReady.then(() => {
     input.setTypefaceReady();
-    if (testingTarget === "gordon" || testingTarget === "gerald") {
+    if (["gordon", "gerald", "marcus"].includes(testingTarget)) {
         input.clearEntry();
         return;
     }
@@ -969,6 +1239,7 @@ function animate() {
     const delta = clock.getDelta();
     scene.background.lerp(targetBackground, Math.min(1, delta * 1.8));
     ronalds.forEach(ronald => ronald.update(delta, camera, renderer));
+    backgroundIncursions.forEach(incursion => incursion.update(delta, camera, renderer));
     updateCameraTransition(delta);
     updateCameraOrbit(delta);
     controls.update();

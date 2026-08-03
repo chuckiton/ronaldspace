@@ -4,7 +4,7 @@
 	<meta charset="UTF-8">
 	<title>RONALDverse Explorer</title>
 
-	<link rel="stylesheet" href="style.css">
+	<link rel="stylesheet" href="style.css?v=20260726-multiverse-menus">
 	<script type="importmap">
 {
   "imports": {
@@ -26,6 +26,7 @@
 		<div id="ronald-mode-label" aria-live="polite">Enter a RONALD</div>
 		<button id="next-entry-mode" type="button" aria-label="Next entry mode">&gt;</button>
 	</div>
+	<div id="entry-universe-menu" aria-label="Entry verse"></div>
 	<div id="ronald-entry-stage">
 		<div id="ronald-entry-mode-track">
 	<div id="ronald-entry" aria-live="polite">
@@ -88,8 +89,8 @@
 <button id="abandon-gordon" type="button" hidden>Thank you, RONALD</button>
 <button id="orbit-camera" type="button" aria-label="Orbit" aria-keyshortcuts="Space" aria-pressed="false">
 	<svg viewBox="0 0 64 36" aria-hidden="true">
-		<path d="M10 18C10 11.4 19.8 6 32 6s22 5.4 22 12c0 5-5.5 9.3-14 11"/>
-		<path d="m44 24-4 5 6 1"/>
+		<path d="M16 31C27 36 46 34 55 26C63 18 58 9 45 5C32 1 16 4 9 12C5 17 6 22 9 25"/>
+		<path d="M5 21 9 25 4 27"/>
 	</svg>
 </button>
 
@@ -108,7 +109,7 @@
 <div id="martin-warning" role="dialog" aria-modal="true" aria-labelledby="martin-warning-title" hidden>
 	<div class="rodney-warning-panel">
 		<p id="martin-warning-title">You have selected a non-RONALD non-RODNEY entity.</p>
-		<p>MARTIN is qualitatively opaque.</p>
+		<p>MARTIN visualisations have cogitohazardous effects.</p>
 		<p>Permit MARTIN?</p>
 		<div class="rodney-warning-actions">
 			<button id="cancel-martin" type="button">RODNEY</button>
@@ -119,7 +120,8 @@
 
 <div id="gordon-warning" role="dialog" aria-modal="true" aria-labelledby="gordon-warning-title" hidden>
 	<div class="rodney-warning-panel">
-		<p id="gordon-warning-title">Initialise GORDONverse, with RESPECT and maximum force?</p>
+		<p id="gordon-warning-title">The GORDONverse requires implicit maximisation of heat and pressure settings.</p>
+		<p>	Initialise, in the silent darkness?</p>
 		<div class="rodney-warning-actions">
 			<button id="cancel-gordon" type="button">MARTIN</button>
 			<button id="confirm-gordon" class="is-dangerous" type="button">GORDON</button>
@@ -129,10 +131,8 @@
 
 <div id="gerald-warning" role="dialog" aria-modal="true" aria-labelledby="gerald-warning-title" hidden>
 	<div class="rodney-warning-panel">
-		<p id="gerald-warning-title">A signal has been detected beyond GORDON.</p>
-		<p>PLACEHOLDER: GERALD converts identity into continuous tone.</p>
-		<p>PLACEHOLDER: waveform stability and tonal consequences remain unverified.</p>
-		<p>Open the GERALD channel?</p>
+		<p id="gerald-warning-title">Unstable crystalloid oscillation detected</p>
+		<p>Visualise GORDON uncertainty matrix?</p>
 		<div class="rodney-warning-actions">
 			<button id="cancel-gerald" type="button">GORDON</button>
 			<button id="confirm-gerald" class="is-dangerous" type="button">GERALD</button>
@@ -151,20 +151,31 @@
 
 <div id="layer-control" aria-label="Universe layers">
 	<div id="layer-menu">
-		<button type="button" data-layer="gerald">
-			<svg class="layer-icon is-wave" viewBox="0 0 64 48" aria-hidden="true"><path d="M3 24h8c4 0 4-15 8-15s4 30 8 30 4-30 8-30 4 30 8 30 4-15 8-15h10"/></svg>
-			GERALD
-		</button>
+		<div id="gordon-branch-layers">
+			<button type="button" data-layer="gerald">
+				<svg class="layer-icon is-wave" viewBox="0 0 64 48" aria-hidden="true"><path d="M3 24h8c4 0 4-15 8-15s4 30 8 30 4-30 8-30 4 30 8 30 4-15 8-15h10"/></svg>
+				GERALD
+			</button>
+			<button type="button" data-layer="marcus">
+				<svg class="layer-icon is-marcus" viewBox="0 0 64 48" aria-hidden="true">
+					<path class="layer-icon-bridge" d="M24 17C29 13 35 13 40 17C44 20 44 28 40 31C35 35 29 35 24 31C20 28 20 20 24 17Z"/>
+					<circle cx="18" cy="24" r="10"/>
+					<circle cx="46" cy="24" r="10"/>
+				</svg>
+				MARCUS
+			</button>
+		</div>
 		<button type="button" data-layer="gordon">
-			<svg class="layer-icon is-object" viewBox="0 0 64 48" aria-hidden="true"><path d="M32 4 58 19 49 42 15 42 6 19 32 4Z"/><path d="M32 4v19m26-4-26 4-26-4m26 4 17 19m-17-19-17 19"/></svg>
+			<svg class="layer-icon is-object" viewBox="0 0 64 48" aria-hidden="true">
+				<path d="M14 15 22 7H42L50 15 32 42 14 15Z"/>
+				<path d="M14 15H50M22 7l5 8 5-8 5 8 5-8M27 15l5 27 5-27"/>
+			</svg>
 			GORDON
 		</button>
 		<button type="button" data-layer="martin">
 			<svg class="layer-icon is-orbital" viewBox="0 0 64 48" aria-hidden="true">
 				<ellipse cx="32" cy="24" rx="26" ry="9" transform="rotate(-25 32 24)"/>
 				<ellipse cx="32" cy="24" rx="26" ry="9" transform="rotate(38 32 24)"/>
-				<circle class="layer-icon-star" cx="32" cy="24" r="4"/>
-				<circle class="layer-icon-star" cx="51" cy="15" r="1.8"/>
 			</svg>
 			MARTIN
 		</button>
@@ -182,7 +193,7 @@
 	</div>
 </div>
 
-    <script type="module" src="src/main.js"></script>
+    <script type="module" src="src/main.js?v=20260726-sequenced-incursions"></script>
 
 </body>
 </html>
